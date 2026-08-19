@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
@@ -35,10 +36,14 @@ class Neo4jStore:
                 session.run(statement)
 
     def upsert_node(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        payload = dict(payload)
+        if isinstance(payload.get("extra"), dict):
+            payload["extra"] = json.dumps(payload["extra"], ensure_ascii=False)
         with self.session() as session:
             record = session.run(
                 """
                 MERGE (n:GraphNode {id: $id})
+                ON CREATE SET n.created_at = timestamp()
                 SET n.kind = $kind,
                     n.name = $name,
                     n.display_name = $display_name,
@@ -54,7 +59,6 @@ class Neo4jStore:
                     n.tags = $tags,
                     n.extra = $extra,
                     n.updated_at = timestamp()
-                ON CREATE SET n.created_at = timestamp()
                 RETURN n
                 """,
                 payload,
@@ -116,19 +120,22 @@ class Neo4jStore:
             return [dict(row["n"]) for row in result]
 
     def upsert_relationship(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        payload = dict(payload)
+        if isinstance(payload.get("extra"), dict):
+            payload["extra"] = json.dumps(payload["extra"], ensure_ascii=False)
         with self.session() as session:
             record = session.run(
                 """
                 MATCH (source:GraphNode {id: $source})
                 MATCH (target:GraphNode {id: $target})
                 MERGE (source)-[r:LINK {id: $id}]->(target)
+                ON CREATE SET r.created_at = timestamp()
                 SET r.relation_type = $relation_type,
                     r.label = $label,
                     r.status = $status,
                     r.notes = $notes,
                     r.extra = $extra,
                     r.updated_at = timestamp()
-                ON CREATE SET r.created_at = timestamp()
                 RETURN r
                 """,
                 payload,
