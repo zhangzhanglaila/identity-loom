@@ -7,10 +7,10 @@
 
   const kindColors = {
     you: '#ff5c7a',
-    provider: '#96e0f7',
-    platform: '#a8e1fe',
-    account: '#00ff50',
-    identifier: '#c792ea',
+    provider: '#1f2937',
+    platform: '#1f2937',
+    account: '#ffffff',
+    identifier: '#1f2937',
     tag: '#f89d51'
   };
 
@@ -75,6 +75,8 @@
     const onSearch = props.onSearch;
     const onToggleLayout = props.onToggleLayout;
     const layoutMode = props.layoutMode;
+    const viewMode = props.viewMode;
+    const onToggleView = props.onToggleView;
     const onAddNode = props.onAddNode;
     const onAddRelationship = props.onAddRelationship;
     const onImport = props.onImport;
@@ -85,9 +87,82 @@
         <input className="toolbar__search" value=${q} onInput=${(e) => onQueryChange(e.target.value)} placeholder="Search nodes" />
         <button className="toolbar__button" onClick=${onSearch}>Search</button>
         <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? 'Spider' : 'Layered'}</button>
+        <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? 'Graph' : 'List'}</button>
         <button className="toolbar__button" onClick=${onAddNode}>Add Node</button>
         <button className="toolbar__button" onClick=${onAddRelationship}>Add Edge</button>
         <button className="toolbar__button" onClick=${onImport}>Import</button>
+      </div>
+    `;
+  }
+
+  function isConnectionNode(node) {
+    return node && (node.kind === 'provider' || node.kind === 'identifier');
+  }
+
+  function ListView(props) {
+    const nodes = props.nodes || [];
+    const relationships = props.relationships || [];
+    const selectedId = props.selectedId;
+    const onSelectNode = props.onSelectNode;
+    const [tab, setTab] = useState('connections');
+
+    const connections = nodes.filter(isConnectionNode);
+    const accounts = nodes.filter((node) => node.kind === 'account');
+
+    const linkedAccountsForConnection = (connectionId) =>
+      relationships
+        .filter((rel) => rel.source === connectionId || rel.target === connectionId)
+        .map((rel) => {
+          const otherId = rel.source === connectionId ? rel.target : rel.source;
+          return nodes.find((node) => node.id === otherId);
+        })
+        .filter(Boolean)
+        .filter((node) => node.kind === 'account');
+
+    const linkedConnectionsForAccount = (accountId) =>
+      relationships
+        .filter((rel) => rel.source === accountId || rel.target === accountId)
+        .map((rel) => {
+          const otherId = rel.source === accountId ? rel.target : rel.source;
+          return nodes.find((node) => node.id === otherId);
+        })
+        .filter(Boolean)
+        .filter(isConnectionNode);
+
+    const activeItems = tab === 'connections' ? connections : accounts;
+
+    return html`
+      <div className="list-view">
+        <div className="list-view__tabs">
+          <button className=${'list-view__tab ' + (tab === 'connections' ? 'is-active' : '')} onClick=${() => setTab('connections')}>
+            Connections (${connections.length})
+          </button>
+          <button className=${'list-view__tab ' + (tab === 'accounts' ? 'is-active' : '')} onClick=${() => setTab('accounts')}>
+            Accounts (${accounts.length})
+          </button>
+        </div>
+        <div className="list-view__header">
+          <div>Name</div>
+          <div>Type</div>
+          <div className="list-view__header-right">Links</div>
+        </div>
+        <div className="list-view__body">
+          ${activeItems.length === 0
+            ? html`<div className="panel__empty">No items.</div>`
+            : activeItems.map((item) => {
+                const selected = String(item.id) === String(selectedId);
+                const links = tab === 'connections'
+                  ? linkedAccountsForConnection(item.id)
+                  : linkedConnectionsForAccount(item.id);
+                return html`
+                  <button key=${item.id} type="button" className=${'list-view__row ' + (selected ? 'is-selected' : '')} onClick=${() => onSelectNode(item)}>
+                    <div className="list-view__name">${item.display_name || item.name || item.id}</div>
+                    <div className="list-view__kind">${item.kind}</div>
+                    <div className="list-view__links">${links.length}</div>
+                  </button>
+                `;
+              })}
+        </div>
       </div>
     `;
   }
@@ -277,6 +352,8 @@
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
     const svgRef = useRef(null);
+    const canvasRef = useRef(null);
+    const containerRef = useRef(null);
 
     const processed = useMemo(() => {
       const map = new Map(nodes.map((node) => [node.id, { ...node }]));
@@ -292,157 +369,281 @@
     }, [nodes, relationships]);
 
     useEffect(() => {
-      const svg = d3.select(svgRef.current);
-      const width = svgRef.current?.clientWidth || 1000;
-      const height = svgRef.current?.clientHeight || 700;
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
 
-      svg.selectAll('*').remove();
-      svg.attr('viewBox', [0, 0, width, height]);
+      const width = container.clientWidth || 1000;
+      const height = container.clientHeight || 700;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
 
-      const root = svg.append('g').attr('class', 'graph-root');
-      svg.call(
-        d3.zoom().scaleExtent([0.2, 2.5]).on('zoom', (event) => {
-          root.attr('transform', event.transform);
-        })
-      );
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const focused = focusNodeId != null;
+      const idOf = (x) => (x && typeof x === 'object' ? x.id : x);
+      const activeNodeIds = focused ? new Set([focusNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
+      const isActiveNode = (d) => !focused || (activeNodeIds && activeNodeIds.has(d.id));
+      const isActiveLink = (d) => !focused || idOf(d.source) === focusNodeId || idOf(d.target) === focusNodeId;
 
       const simulation = d3.forceSimulation(processed.nodes)
-        .force('link', d3.forceLink(processed.links).id((d) => d.id).distance(layoutMode === 'layered' ? 170 : 110))
-        .force('charge', d3.forceManyBody().strength(layoutMode === 'layered' ? -300 : -220))
+        .force('link', d3.forceLink(processed.links).id((d) => d.id).distance(layoutMode === 'layered' ? 180 : 120))
+        .force('charge', d3.forceManyBody().strength(layoutMode === 'layered' ? -280 : -230))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collide', d3.forceCollide().radius(38));
+        .force('collide', d3.forceCollide().radius((d) => (d.kind === 'account' ? 26 : d.kind === 'you' ? 34 : 22)));
 
       if (layoutMode === 'layered') {
         simulation.force(
           'y',
           d3.forceY((d) => {
-            if (d.kind === 'you') return height * 0.2;
-            if (d.kind === 'provider') return height * 0.35;
-            if (d.kind === 'account') return height * 0.55;
-            return height * 0.75;
-          }).strength(0.14)
+            if (d.kind === 'you') return height * 0.16;
+            if (d.kind === 'provider' || d.kind === 'identifier') return height * 0.34;
+            if (d.kind === 'account') return height * 0.58;
+            return height * 0.78;
+          }).strength(0.16)
         );
       } else {
         simulation.force(
           'radial',
           d3.forceRadial((d) => {
             if (d.kind === 'you') return 0;
-            if (d.kind === 'provider') return 130;
+            if (d.kind === 'provider' || d.kind === 'identifier') return 140;
             if (d.kind === 'account') return 250;
-            return 360;
+            return 350;
           }, width / 2, height / 2).strength(0.08)
         );
       }
 
-      const defs = root.append('defs');
-      defs.append('marker')
-        .attr('id', 'arrow')
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', 18)
-        .attr('refY', 0)
-        .attr('markerWidth', 7)
-        .attr('markerHeight', 7)
-        .attr('orient', 'auto')
-        .append('path')
-        .attr('d', 'M0,-5L10,0L0,5')
-        .attr('fill', '#96e0f7');
+      const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', (event) => {
+        transform = event.transform;
+        render();
+      });
+      let transform = d3.zoomIdentity;
+      d3.select(canvas).call(zoom);
 
-      const linkGroup = root.append('g').attr('class', 'links');
-      const nodeGroup = root.append('g').attr('class', 'nodes');
-
-      const focused = focusNodeId != null;
-      const idOf = (x) => (x && typeof x === 'object' ? x.id : x);
-      const isActiveNode = (d) => !focused || d.id === focusNodeId || (highlightIds && highlightIds.has(d.id));
-      const isActiveLink = (d) => !focused || idOf(d.source) === focusNodeId || idOf(d.target) === focusNodeId;
-
-      const link = linkGroup
-        .selectAll('path')
-        .data(processed.links)
-        .join('path')
-        .attr('class', 'link')
-        .attr('stroke', '#96e0f7')
-        .attr('stroke-opacity', (d) => (isActiveLink(d) ? 0.7 : 0.08))
-        .attr('fill', 'none')
-        .attr('marker-end', 'url(#arrow)')
-        .on('click', (event, d) => onSelectRelationship(d));
-
-      const node = nodeGroup
-        .selectAll('g')
-        .data(processed.nodes)
-        .join('g')
-        .attr('class', 'node')
-        .attr('opacity', (d) => (isActiveNode(d) ? 1 : 0.22))
-        .call(
-          d3.drag()
-            .on('start', (event, d) => {
-              if (!event.active) simulation.alphaTarget(0.3).restart();
-              d.fx = d.x;
-              d.fy = d.y;
-            })
-            .on('drag', (event, d) => {
-              d.fx = event.x;
-              d.fy = event.y;
-            })
-            .on('end', (event, d) => {
-              if (!event.active) simulation.alphaTarget(0);
-              d.fx = null;
-              d.fy = null;
-            })
-        )
-        .on('click', (event, d) => onSelectNode(d));
-
-      node.append('circle')
-        .attr('r', (d) => (d.kind === 'you' ? 26 : d.kind === 'account' ? 20 : 16))
-        .attr('fill', (d) => kindColors[d.kind] || '#8ea1b5')
-        .attr('stroke', (d) => (d.id === selectedNodeId ? '#ffffff' : '#0a1630'))
-        .attr('stroke-width', (d) => (d.id === selectedNodeId ? 3 : 2));
-
-      node.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', 38)
-        .attr('fill', '#d7ecff')
-        .attr('font-size', 12)
-        .text((d) => d.display_name || d.name || d.id);
-
-      const labelGroup = root.append('g').attr('class', 'labels');
-
-      simulation.on('tick', () => {
-        link.attr('d', (d) => {
-          const sx = d.source.x;
-          const sy = d.source.y;
-          const tx = d.target.x;
-          const ty = d.target.y;
-          const dx = tx - sx;
-          const dy = ty - sy;
-          const dr = Math.sqrt(dx * dx + dy * dy) * 0.8;
-          return 'M' + sx + ',' + sy + 'A' + dr + ',' + dr + ' 0 0,1 ' + tx + ',' + ty;
-        });
-
-        node.attr('transform', (d) => 'translate(' + d.x + ',' + d.y + ')');
-
-        labelGroup.selectAll('*').remove();
-        labelGroup
-          .selectAll('text')
-          .data(processed.links.slice(0, 80))
-          .join('text')
-          .attr('x', (d) => (d.source.x + d.target.x) / 2)
-          .attr('y', (d) => (d.source.y + d.target.y) / 2)
-          .attr('fill', '#96e0f7')
-          .attr('fill-opacity', 0.75)
-          .attr('font-size', 10)
-          .attr('text-anchor', 'middle')
-          .text((d) => d.label || d.relation_type);
+      const linked = new Map();
+      processed.links.forEach((link) => {
+        const key = [link.source, link.target].sort().join('::');
+        linked.set(key, link);
       });
 
-      return () => simulation.stop();
+      const render = () => {
+        ctx.save();
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#081018';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.translate(transform.x, transform.y);
+        ctx.scale(transform.k, transform.k);
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        processed.links.forEach((link) => {
+          const sx = link.source.x;
+          const sy = link.source.y;
+          const tx = link.target.x;
+          const ty = link.target.y;
+          const active = isActiveLink(link);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          const dx = tx - sx;
+          const dy = ty - sy;
+          const dr = Math.sqrt(dx * dx + dy * dy) * 0.82;
+          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.58)' : 'rgba(150, 224, 247, 0.08)';
+          ctx.lineWidth = active ? 1.8 : 1;
+          ctx.quadraticCurveTo((sx + tx) / 2, (sy + ty) / 2 - dr * 0.06, tx, ty);
+          ctx.stroke();
+        });
+
+        processed.nodes.forEach((node) => {
+          const active = isActiveNode(node);
+          const r = node.kind === 'you' ? 26 : node.kind === 'account' ? 20 : node.kind === 'provider' || node.kind === 'identifier' ? 16 : 13;
+          const fill = node.kind === 'you'
+            ? '#ff5c7a'
+            : node.kind === 'account'
+              ? '#f8fafc'
+              : '#0f172a';
+          const stroke = node.kind === 'provider'
+            ? '#96e0f7'
+            : node.kind === 'identifier'
+              ? '#c792ea'
+              : node.kind === 'account'
+                ? '#96e0f7'
+                : '#0a1630';
+          const x = node.x;
+          const y = node.y;
+
+          ctx.save();
+          ctx.globalAlpha = active ? 1 : 0.22;
+          if (node.id === selectedNodeId) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 7, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(96, 165, 250, 0.18)';
+            ctx.fill();
+          }
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = fill;
+          ctx.fill();
+          ctx.lineWidth = node.id === selectedNodeId ? 3 : 1.5;
+          ctx.strokeStyle = node.id === selectedNodeId ? '#ffffff' : stroke;
+          ctx.stroke();
+
+          if (node.kind === 'account') {
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+
+          const shouldLabel = node.kind === 'you' || node.kind === 'provider' || node.kind === 'identifier' || node.id === selectedNodeId || activeNodeIds?.has(node.id);
+          if (shouldLabel) {
+            const label = node.kind === 'account'
+              ? (node.username || node.name || node.id)
+              : (node.display_name || node.name || node.id);
+            ctx.save();
+            ctx.font = node.kind === 'you' ? '800 13px Inter, sans-serif' : '700 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = node.kind === 'account' ? '#cfe7ff' : (node.id === selectedNodeId ? '#ffffff' : '#d7ecff');
+            ctx.fillText(label, x, y + r + 14);
+            ctx.restore();
+          }
+        });
+
+        if (selectedNodeId) {
+          const node = processed.nodes.find((item) => item.id === selectedNodeId);
+          if (node) {
+            ctx.save();
+            ctx.font = '700 12px Inter, sans-serif';
+            ctx.fillStyle = '#96e0f7';
+            ctx.textAlign = 'left';
+            ctx.fillText(node.kind.toUpperCase(), node.x + 20, node.y - 20);
+            ctx.restore();
+          }
+        }
+
+        ctx.restore();
+      };
+
+      const ticked = () => render();
+      simulation.on('tick', ticked);
+      render();
+
+      let dragNode = null;
+      const findNode = (x, y) => {
+        const [px, py] = transform.invert([x, y]);
+        let closest = null;
+        let closestDist = Infinity;
+        processed.nodes.forEach((node) => {
+          const r = node.kind === 'you' ? 26 : node.kind === 'account' ? 20 : node.kind === 'provider' || node.kind === 'identifier' ? 16 : 13;
+          const dx = px - node.x;
+          const dy = py - node.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= r + 8 && dist < closestDist) {
+            closest = node;
+            closestDist = dist;
+          }
+        });
+        return closest;
+      };
+
+      const onPointerDown = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
+        if (node) {
+          dragNode = node;
+          node.fx = node.x;
+          node.fy = node.y;
+          simulation.alphaTarget(0.25).restart();
+        }
+      };
+
+      const onPointerMove = (event) => {
+        if (!dragNode) return;
+        const rect = canvas.getBoundingClientRect();
+        const [px, py] = transform.invert([event.clientX - rect.left, event.clientY - rect.top]);
+        dragNode.fx = px;
+        dragNode.fy = py;
+      };
+
+      const onPointerUp = (event) => {
+        if (dragNode) {
+          dragNode.fx = null;
+          dragNode.fy = null;
+          dragNode = null;
+          simulation.alphaTarget(0);
+        }
+      };
+
+      const onClick = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
+        if (node) {
+          onSelectNode(node);
+          return;
+        }
+        const [px, py] = transform.invert([event.clientX - rect.left, event.clientY - rect.top]);
+        let picked = null;
+        processed.links.forEach((link) => {
+          const mx = (link.source.x + link.target.x) / 2;
+          const my = (link.source.y + link.target.y) / 2;
+          const dx = px - mx;
+          const dy = py - my;
+          if (Math.sqrt(dx * dx + dy * dy) < 20) {
+            picked = link;
+          }
+        });
+        if (picked) onSelectRelationship(picked);
+      };
+
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointerleave', onPointerUp);
+      canvas.addEventListener('click', onClick);
+
+      const resizeObserver = new ResizeObserver(() => {
+        const nextWidth = container.clientWidth || width;
+        const nextHeight = container.clientHeight || height;
+        canvas.width = nextWidth * dpr;
+        canvas.height = nextHeight * dpr;
+        canvas.style.width = nextWidth + 'px';
+        canvas.style.height = nextHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        simulation.force('center', d3.forceCenter(nextWidth / 2, nextHeight / 2));
+        simulation.alpha(0.35).restart();
+      });
+      resizeObserver.observe(container);
+
+      return () => {
+        simulation.stop();
+        resizeObserver.disconnect();
+        canvas.removeEventListener('pointerdown', onPointerDown);
+        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerup', onPointerUp);
+        canvas.removeEventListener('pointerleave', onPointerUp);
+        canvas.removeEventListener('click', onClick);
+      };
     }, [processed, layoutMode, selectedNodeId, focusNodeId, highlightIds, onSelectNode, onSelectRelationship]);
 
-    return html`<svg ref=${svgRef} className="graph-canvas"></svg>`;
+    return html`
+      <div ref=${containerRef} className="graph-canvas-wrap">
+        <canvas ref=${canvasRef} className="graph-canvas"></canvas>
+      </div>
+    `;
   }
 
   function App() {
     const [query, setQuery] = useState('');
     const [layoutMode, setLayoutMode] = useState('spider');
+    const [viewMode, setViewMode] = useState('graph');
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
     const [graph, setGraph] = useState(window.sampleGraph || { nodes: [], relationships: [] });
     const [selectedNode, setSelectedNode] = useState(null);
@@ -589,6 +790,8 @@
           onSearch=${handleSearch}
           onToggleLayout=${() => setLayoutMode((mode) => (mode === 'spider' ? 'layered' : 'spider'))}
           layoutMode=${layoutMode}
+          viewMode=${viewMode}
+          onToggleView=${() => setViewMode((mode) => (mode === 'graph' ? 'list' : 'graph'))}
           onAddNode=${handleAddNode}
           onAddRelationship=${handleAddRelationship}
           onImport=${() => setImportOpen(true)}
@@ -597,16 +800,27 @@
         <div className="content">
           <${Sidebar} filters=${filters} setFilters=${setFilters} stats=${stats} />
           <main className="graph-area">
-            <${GraphCanvas}
-              nodes=${filteredGraph.nodes}
-              relationships=${filteredGraph.relationships}
-              layoutMode=${layoutMode}
-              selectedNodeId=${selectedNode?.id}
-              focusNodeId=${selectedNode?.id}
-              highlightIds=${neighborIds}
-              onSelectNode=${handleSelectNode}
-              onSelectRelationship=${handleSelectRelationship}
-            />
+            ${viewMode === 'graph'
+              ? html`
+                  <${GraphCanvas}
+                    nodes=${filteredGraph.nodes}
+                    relationships=${filteredGraph.relationships}
+                    layoutMode=${layoutMode}
+                    selectedNodeId=${selectedNode?.id}
+                    focusNodeId=${selectedNode?.id}
+                    highlightIds=${neighborIds}
+                    onSelectNode=${handleSelectNode}
+                    onSelectRelationship=${handleSelectRelationship}
+                  />
+                `
+              : html`
+                  <${ListView}
+                    nodes=${filteredGraph.nodes}
+                    relationships=${filteredGraph.relationships}
+                    selectedId=${selectedNode?.id}
+                    onSelectNode=${handleSelectNode}
+                  />
+                `}
           </main>
           <${DetailPanel}
             node=${selectedNode}
