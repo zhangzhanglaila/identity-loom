@@ -1,0 +1,331 @@
+:root {
+  color-scheme: dark;
+  --bg: #030b1c;
+  --bg-2: #0a1630;
+  --panel: #0e1c3b;
+  --panel-2: #081528;
+  --line: #1e3a5f;
+  --line-bright: #2f5a8a;
+  --text: #eaf6ff;
+  --muted: #7fa8c9;
+  --accent: #96e0f7;
+  --accent-2: #00ff50;
+  --accent-3: #a8e1fe;
+  --danger: #ff5c7a;
+  --glow: 0 0 8px rgba(150, 224, 247, 0.35);
+  --glow-strong: 0 0 14px rgba(150, 224, 247, 0.55);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background:
+    linear-gradient(90deg, rgba(150, 224, 247, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(150, 224, 247, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, #0e2a5c 0%, #061026 55%, #030b1c 100%);
+  background-size: 32px 32px, 32px 32px, 100% 100%;
+  color: var(--text);
+  font-family: 'Cascadia Code', 'Consolas', 'Lucida Console', 'Courier New', monospace;
+}
+
+button, input, textarea {
+  font: inherit;
+}
+
+.app-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(6, 16, 36, 0.92);
+  box-shadow: 0 1px 12px rgba(150, 224, 247, 0.08);
+}
+
+.toolbar__brand {
+  font-weight: 700;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  color: var(--accent);
+  text-shadow: var(--glow);
+}
+
+.toolbar__search {
+  flex: 1;
+  min-width: 160px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.toolbar__search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.toolbar__button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+  background: #0c1c38;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.toolbar__button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 340px;
+}
+
+.sidebar,
+.detail-panel {
+  min-width: 0;
+  padding: 14px;
+  background: rgba(5, 13, 30, 0.72);
+  border-right: 1px solid var(--line);
+}
+
+.detail-panel {
+  border-right: 0;
+  border-left: 1px solid var(--line);
+}
+
+.graph-area {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background:
+    radial-gradient(circle at center, rgba(3, 11, 28, 0) 0%, rgba(3, 11, 28, 0.55) 100%),
+    repeating-radial-gradient(circle at center, rgba(150, 224, 247, 0.05) 0 1px, transparent 1px 110px),
+    conic-gradient(from 0deg, rgba(150, 224, 247, 0.04) 0 1deg, transparent 1deg 30deg);
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.panel {
+  padding: 12px;
+  margin-bottom: 14px;
+  background: linear-gradient(180deg, rgba(14, 28, 59, 0.95), rgba(8, 17, 38, 0.95));
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.03), 0 0 10px rgba(150, 224, 247, 0.05);
+}
+
+.panel__title {
+  margin-bottom: 10px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-transform: uppercase;
+  text-shadow: var(--glow);
+}
+
+.panel__note,
+.panel__empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.stat__label,
+.detail-row__key {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.stat__value {
+  font-size: 22px;
+  margin-top: 6px;
+  color: var(--accent);
+  text-shadow: var(--glow);
+}
+
+.checkline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.checkline input {
+  accent-color: var(--accent);
+}
+
+.detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-row {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(150, 224, 247, 0.08);
+}
+
+.detail-row__value {
+  word-break: break-word;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: grid;
+  place-items: center;
+}
+
+.modal {
+  width: min(720px, calc(100vw - 32px));
+  background: var(--panel);
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  padding: 14px;
+  box-shadow: var(--glow-strong);
+}
+
+.modal__textarea {
+  width: 100%;
+  min-height: 320px;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #060f22;
+  color: var(--text);
+  padding: 12px;
+  resize: vertical;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mode-switch__button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: #0c1c38;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mode-switch__button.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.connection-list {
+  display: grid;
+  gap: 6px;
+}
+
+.connection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.connection-row:hover {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.connection-row__label {
+  color: var(--accent);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.connection-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+svg text {
+  user-select: none;
+  pointer-events: none;
+}
+
+.link {
+  cursor: pointer;
+}
+
+.link:hover {
+  stroke: var(--accent-2);
+}
+
+.node {
+  cursor: grab;
+}
+
+.node circle {
+  filter: drop-shadow(0 0 4px rgba(150, 224, 247, 0.45));
+}
+
+.node:hover circle {
+  filter: drop-shadow(0 0 8px rgba(0, 255, 80, 0.6));
+}
