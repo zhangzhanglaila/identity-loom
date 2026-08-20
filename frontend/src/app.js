@@ -138,6 +138,72 @@
     return (dict.graphKindLabels && dict.graphKindLabels[kind]) || kind;
   }
 
+  const detailFieldLabels = {
+    zh: {
+      platform: '平台',
+      username: '用户名',
+      nickname: '昵称',
+      email: '邮箱',
+      phone: '手机号',
+      uid: 'UID',
+      url: '链接',
+      status: '状态',
+      notes: '备注',
+      tags: '标签'
+    },
+    en: {
+      platform: 'Platform',
+      username: 'Username',
+      nickname: 'Nickname',
+      email: 'Email',
+      phone: 'Phone',
+      uid: 'UID',
+      url: 'URL',
+      status: 'Status',
+      notes: 'Notes',
+      tags: 'Tags'
+    }
+  };
+
+  const relationLabels = {
+    login_by: { zh: '登录', en: 'Login' },
+    binds: { zh: '绑定', en: 'Binds' },
+    belongs_to: { zh: '属于平台', en: 'Belongs to' },
+    owns: { zh: '拥有', en: 'Owns' },
+    verifies: { zh: '验证', en: 'Verifies' },
+    registered_by: { zh: '注册于', en: 'Registered by' },
+    uses: { zh: '使用', en: 'Uses' }
+  };
+
+  function formatRelationLabel(locale, relationship) {
+    const raw = relationship?.label || relationship?.relation_type || 'related_to';
+    return relationLabels[raw]?.[locale] || raw;
+  }
+
+  function detailEntries(node, locale) {
+    const labels = detailFieldLabels[locale] || detailFieldLabels.en;
+    const keys = ['platform', 'username', 'nickname', 'email', 'phone', 'uid', 'url', 'status', 'notes', 'tags'];
+    return keys
+      .map((key) => [labels[key] || key, node?.[key]])
+      .filter(([, value]) => value !== null && value !== undefined && value !== '' && (!Array.isArray(value) || value.length > 0));
+  }
+
+  function relationshipEntries(relationship, locale) {
+    const entries = [];
+    const type = relationship?.label || relationship?.relation_type;
+    if (type) entries.push([locale === 'zh' ? '关系' : 'Relation', formatRelationLabel(locale, relationship)]);
+    if (relationship?.count > 1) entries.push([locale === 'zh' ? '关联数量' : 'Connections', relationship.count]);
+    if (relationship?.status) entries.push([locale === 'zh' ? '状态' : 'Status', relationship.status]);
+    if (relationship?.notes) entries.push([locale === 'zh' ? '备注' : 'Notes', relationship.notes]);
+    return entries;
+  }
+
+  function displayDetailValue(value) {
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+    return String(value);
+  }
+
   const kindColors = {
     you: '#ff5c7a',
     provider: '#1f2937',
@@ -323,13 +389,8 @@
     return [...map.values()];
   }
 
-  function entriesOf(obj) {
-    const sensitiveKeys = new Set(['password', 'passwd', 'secret', 'token', 'access_token', 'refresh_token', 'client_secret']);
-    return Object.entries(obj || {}).filter(function (entry) {
-      if (sensitiveKeys.has(String(entry[0]).toLowerCase())) return false;
-      const value = entry[1];
-      return value !== null && value !== undefined && value !== '';
-    });
+  function nodeLabel(node) {
+    return node?.username || node?.display_name || node?.name || node?.id || '';
   }
 
   function Toolbar(props) {
@@ -492,8 +553,11 @@
     const node = props.node;
     const relationship = props.relationship;
     const neighbors = props.neighbors;
+    const graphNodes = props.graphNodes || [];
+    const graphRelationships = props.graphRelationships || [];
     const onSelectNode = props.onSelectNode;
     const onSelectMember = props.onSelectMember;
+    const locale = props.locale;
     const t = props.t;
 
     if (!node && !relationship) {
@@ -508,16 +572,16 @@
     }
 
     if (relationship) {
-      const title = t('edgePrefix') + (relationship.label || relationship.relation_type);
+      const title = t('edgePrefix') + formatRelationLabel(locale, relationship);
       return html`
         <aside className="detail-panel">
           <div className="panel">
             <div className="panel__title">${title}</div>
             <div className="detail-list">
-              ${entriesOf(relationship).map(([key, value]) => html`
+              ${relationshipEntries(relationship, locale).map(([key, value]) => html`
                 <div className="detail-row" key=${key}>
                   <span className="detail-row__key">${key}</span>
-                  <span className="detail-row__value">${typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                  <span className="detail-row__value">${displayDetailValue(value)}</span>
                 </div>
               `)}
             </div>
@@ -528,7 +592,15 @@
 
     if (node.synthetic) {
       const members = node.members || [];
-      const title = node.display_name || node.name || node.id;
+      const title = nodeLabel(node);
+      const connections = graphRelationships
+        .filter((rel) => rel.source === node.id || rel.target === node.id)
+        .map((rel) => {
+          const otherId = rel.source === node.id ? rel.target : rel.source;
+          const other = graphNodes.find((item) => item.id === otherId);
+          return { rel, other };
+        })
+        .filter((item) => item.other);
       return html`
         <aside className="detail-panel">
           <div className="panel">
@@ -548,8 +620,22 @@
               : html`<div className="connection-list">
                   ${members.map((member) => html`
                     <button key=${member.id} type="button" className="connection-row" onClick=${() => onSelectMember && onSelectMember(member)}>
-                      <span className="connection-row__label">${member.username || member.display_name || member.name || member.id}</span>
+                      <span className="connection-row__label">${nodeLabel(member)}</span>
                       <span className="connection-row__name">${member.id}</span>
+                    </button>
+                  `)}
+                </div>`}
+          </div>
+
+          <div className="panel">
+            <div className="panel__title">${t('connections')}</div>
+            ${connections.length === 0
+              ? html`<div className="panel__empty">${t('noConnections')}</div>`
+              : html`<div className="connection-list">
+                  ${connections.map((item) => html`
+                    <button key=${item.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(item.other)}>
+                      <span className="connection-row__label">${formatRelationLabel(locale, item.rel)}</span>
+                      <span className="connection-row__name">${item.other.display_name || item.other.name || item.other.id}</span>
                     </button>
                   `)}
                 </div>`}
@@ -558,7 +644,7 @@
       `;
     }
 
-    const title = node.display_name || node.name || node.id;
+    const title = nodeLabel(node);
     const connections = (neighbors?.relationships || [])
       .map((rel) => {
         const otherId = rel.source === node.id ? rel.target : rel.source;
@@ -572,11 +658,11 @@
         <div className="panel">
           <div className="panel__title">${title}</div>
           <div className="detail-list">
-            ${entriesOf(node).map(([key, value]) => html`
-              <div className="detail-row" key=${key}>
-                <span className="detail-row__key">${key}</span>
-                <span className="detail-row__value">${typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-              </div>
+              ${detailEntries(node, locale).map(([key, value]) => html`
+                <div className="detail-row" key=${key}>
+                  <span className="detail-row__key">${key}</span>
+                  <span className="detail-row__value">${displayDetailValue(value)}</span>
+                </div>
             `)}
           </div>
         </div>
@@ -588,8 +674,8 @@
             : html`<div className="connection-list">
                 ${connections.map((c) => html`
                   <button key=${c.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(c.other)}>
-                    <span className="connection-row__label">${c.rel.label || c.rel.relation_type || 'related_to'}</span>
-                    <span className="connection-row__name">${c.other.display_name || c.other.name || c.other.id}</span>
+                    <span className="connection-row__label">${formatRelationLabel(locale, c.rel)}</span>
+                    <span className="connection-row__name">${nodeLabel(c.other)}</span>
                   </button>
                 `)}
               </div>`}
@@ -1212,6 +1298,8 @@
             node=${selectedNode}
             relationship=${selectedRelationship}
             neighbors=${neighbors}
+            graphNodes=${filteredGraph.nodes}
+            graphRelationships=${filteredGraph.relationships}
             onSelectNode=${handleSelectNode}
             onSelectMember=${handleSelectMember}
             locale=${locale}
