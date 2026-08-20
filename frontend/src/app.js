@@ -19,6 +19,7 @@
       import: '导入',
       toggleView: '切换视图',
       languageToggle: 'EN',
+      fullGraph: '全部',
       overview: '概览',
       nodes: '节点',
       edges: '关系',
@@ -78,6 +79,7 @@
       toggleView: 'Toggle View',
       languageToggle: '中文',
       overview: 'Overview',
+      fullGraph: 'Full',
       nodes: 'Nodes',
       edges: 'Edges',
       kinds: 'Kinds',
@@ -145,6 +147,134 @@
     tag: '#f89d51'
   };
 
+  const platformIcons = {
+    apple: 'https://cdn.simpleicons.org/apple/ffffff',
+    '苹果': 'https://cdn.simpleicons.org/apple/ffffff',
+    google: 'https://cdn.simpleicons.org/google/ffffff',
+    '谷歌': 'https://cdn.simpleicons.org/google/ffffff',
+    github: 'https://cdn.simpleicons.org/github/ffffff',
+    microsoft: 'https://cdn.simpleicons.org/microsoft/ffffff',
+    '微软': 'https://cdn.simpleicons.org/microsoft/ffffff',
+    wechat: 'https://cdn.simpleicons.org/wechat/ffffff',
+    '微信': 'https://cdn.simpleicons.org/wechat/ffffff',
+    qq: 'https://cdn.simpleicons.org/tencentqq/ffffff',
+    '腾讯qq': 'https://cdn.simpleicons.org/tencentqq/ffffff',
+    douyin: 'https://cdn.simpleicons.org/tiktok/ffffff',
+    '抖音': 'https://cdn.simpleicons.org/tiktok/ffffff',
+    tiktok: 'https://cdn.simpleicons.org/tiktok/ffffff',
+    bilibili: 'https://cdn.simpleicons.org/bilibili/ffffff',
+    '哔哩哔哩': 'https://cdn.simpleicons.org/bilibili/ffffff',
+    xiaohongshu: 'https://cdn.simpleicons.org/xiaohongshu/ffffff',
+    '小红书': 'https://cdn.simpleicons.org/xiaohongshu/ffffff',
+    taobao: 'https://cdn.simpleicons.org/taobao/ffffff',
+    '淘宝': 'https://cdn.simpleicons.org/taobao/ffffff',
+    jd: 'https://cdn.simpleicons.org/jd/ffffff',
+    '京东': 'https://cdn.simpleicons.org/jd/ffffff',
+    steam: 'https://cdn.simpleicons.org/steam/ffffff',
+    discord: 'https://cdn.simpleicons.org/discord/ffffff',
+    telegram: 'https://cdn.simpleicons.org/telegram/ffffff',
+    chatgpt: 'https://cdn.simpleicons.org/openai/ffffff',
+    openai: 'https://cdn.simpleicons.org/openai/ffffff',
+    claude: 'https://cdn.simpleicons.org/anthropic/ffffff',
+    vercel: 'https://cdn.simpleicons.org/vercel/ffffff',
+    huggingface: 'https://cdn.simpleicons.org/huggingface/ffffff',
+    modelscope: 'https://cdn.simpleicons.org/modelscope/ffffff',
+    email: 'https://cdn.simpleicons.org/maildotru/ffffff',
+    '邮箱': 'https://cdn.simpleicons.org/maildotru/ffffff',
+    phone: 'https://cdn.simpleicons.org/phonepe/ffffff',
+    '手机号': 'https://cdn.simpleicons.org/phonepe/ffffff'
+  };
+
+  function normalizeIconKey(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_./-]+/g, '');
+  }
+
+  function iconUrlForNode(node) {
+    if (!node || (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account')) return null;
+    const key = normalizeIconKey(node.platform || node.name);
+    return platformIcons[key] || null;
+  }
+
+  function initialsForNode(node) {
+    const label = String(node?.platform || node?.name || node?.id || '?').trim();
+    return label.slice(0, 2).toUpperCase();
+  }
+
+  function accountGroupKey(node) {
+    const platform = normalizeIconKey(node?.platform);
+    return platform || ('account-' + normalizeIconKey(node?.id || node?.name) || 'unknown');
+  }
+
+  function accountGroupLabel(node) {
+    return String(node?.platform || node?.display_name || node?.name || node?.id || 'Account').trim();
+  }
+
+  function buildOverviewGraph(graph) {
+    const sourceNodes = graph?.nodes || [];
+    const sourceRelationships = graph?.relationships || [];
+    const accountGroups = new Map();
+    const accountToGroup = new Map();
+
+    sourceNodes.filter((node) => node.kind === 'account').forEach((account) => {
+      const key = accountGroupKey(account);
+      if (!accountGroups.has(key)) {
+        const label = accountGroupLabel(account);
+        accountGroups.set(key, {
+          id: 'platform-group:' + key,
+          kind: 'platform',
+          synthetic: true,
+          name: label,
+          display_name: label,
+          platform: account.platform || label,
+          memberCount: 0,
+          members: []
+        });
+      }
+      const group = accountGroups.get(key);
+      group.members.push(account);
+      group.memberCount += 1;
+      accountToGroup.set(account.id, group.id);
+    });
+
+    const nodes = sourceNodes
+      .filter((node) => node.kind !== 'account')
+      .map((node) => ({ ...node }));
+    nodes.push(...accountGroups.values());
+
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    const relationshipMap = new Map();
+    sourceRelationships.forEach((relationship) => {
+      const source = accountToGroup.get(relationship.source) || relationship.source;
+      const target = accountToGroup.get(relationship.target) || relationship.target;
+      if (!nodeIds.has(source) || !nodeIds.has(target) || source === target) return;
+
+      const relationType = relationship.relation_type || relationship.label || 'related_to';
+      const key = [source, target, relationType].sort().join('::');
+      if (!relationshipMap.has(key)) {
+        relationshipMap.set(key, {
+          id: 'overview-link:' + relationshipMap.size,
+          source,
+          target,
+          relation_type: relationType,
+          label: relationship.label || relationType,
+          count: 0,
+          member_ids: []
+        });
+      }
+      const aggregated = relationshipMap.get(key);
+      aggregated.count += 1;
+      aggregated.member_ids.push({ source: relationship.source, target: relationship.target });
+    });
+
+    return {
+      nodes,
+      relationships: [...relationshipMap.values()]
+    };
+  }
+
   async function request(path, options = {}) {
     const response = await fetch(API_BASE + path, {
       headers: {
@@ -194,7 +324,9 @@
   }
 
   function entriesOf(obj) {
+    const sensitiveKeys = new Set(['password', 'passwd', 'secret', 'token', 'access_token', 'refresh_token', 'client_secret']);
     return Object.entries(obj || {}).filter(function (entry) {
+      if (sensitiveKeys.has(String(entry[0]).toLowerCase())) return false;
       const value = entry[1];
       return value !== null && value !== undefined && value !== '';
     });
@@ -206,6 +338,8 @@
     const onSearch = props.onSearch;
     const onToggleLayout = props.onToggleLayout;
     const layoutMode = props.layoutMode;
+    const displayMode = props.displayMode;
+    const onToggleDisplayMode = props.onToggleDisplayMode;
     const viewMode = props.viewMode;
     const onToggleView = props.onToggleView;
     const locale = props.locale;
@@ -221,6 +355,7 @@
         <input className="toolbar__search" value=${q} onInput=${(e) => onQueryChange(e.target.value)} placeholder=${t('searchPlaceholder')} />
         <button className="toolbar__button" onClick=${onSearch}>${t('search')}</button>
         <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? t('spider') : t('layered')}</button>
+        <button className="toolbar__button" onClick=${onToggleDisplayMode}>${displayMode === 'overview' ? t('fullGraph') : t('overview')}</button>
         <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? t('graphView') : t('listView')}</button>
         <button className="toolbar__button" onClick=${onAddNode}>${t('addNode')}</button>
         <button className="toolbar__button" onClick=${onAddRelationship}>${t('addEdge')}</button>
@@ -231,7 +366,7 @@
   }
 
   function isConnectionNode(node) {
-    return node && (node.kind === 'provider' || node.kind === 'identifier');
+    return node && (node.kind === 'provider' || node.kind === 'platform' || node.kind === 'identifier');
   }
 
   function ListView(props) {
@@ -289,7 +424,7 @@
             : activeItems.map((item) => {
                 const selected = String(item.id) === String(selectedId);
                 const links = tab === 'connections'
-                  ? linkedAccountsForConnection(item.id)
+                  ? (item.synthetic ? Array.from({ length: item.memberCount || 0 }) : linkedAccountsForConnection(item.id))
                   : linkedConnectionsForAccount(item.id);
                 return html`
                   <button key=${item.id} type="button" className=${'list-view__row ' + (selected ? 'is-selected' : '')} onClick=${() => onSelectNode(item)}>
@@ -358,6 +493,7 @@
     const relationship = props.relationship;
     const neighbors = props.neighbors;
     const onSelectNode = props.onSelectNode;
+    const onSelectMember = props.onSelectMember;
     const t = props.t;
 
     if (!node && !relationship) {
@@ -385,6 +521,38 @@
                 </div>
               `)}
             </div>
+          </div>
+        </aside>
+      `;
+    }
+
+    if (node.synthetic) {
+      const members = node.members || [];
+      const title = node.display_name || node.name || node.id;
+      return html`
+        <aside className="detail-panel">
+          <div className="panel">
+            <div className="panel__title">${title}</div>
+            <div className="detail-list">
+              <div className="detail-row">
+                <span className="detail-row__key">${t('accounts')}</span>
+                <span className="detail-row__value">${members.length}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel__title">${t('accounts')}</div>
+            ${members.length === 0
+              ? html`<div className="panel__empty">${t('noItems')}</div>`
+              : html`<div className="connection-list">
+                  ${members.map((member) => html`
+                    <button key=${member.id} type="button" className="connection-row" onClick=${() => onSelectMember && onSelectMember(member)}>
+                      <span className="connection-row__label">${member.username || member.display_name || member.name || member.id}</span>
+                      <span className="connection-row__name">${member.id}</span>
+                    </button>
+                  `)}
+                </div>`}
           </div>
         </aside>
       `;
@@ -495,6 +663,7 @@
     const svgRef = useRef(null);
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
+    const iconCacheRef = useRef(new Map());
 
     const processed = useMemo(() => {
       const map = new Map(nodes.map((node) => [node.id, { ...node }]));
@@ -513,6 +682,25 @@
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
+      const iconCache = iconCacheRef.current;
+      processed.nodes.forEach((node) => {
+        const url = iconUrlForNode(node);
+        if (!url || iconCache.has(url)) return;
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        iconCache.set(url, { image: image, loaded: false, failed: false });
+        image.onload = () => {
+          const entry = iconCache.get(url);
+          if (entry) entry.loaded = true;
+          render();
+        };
+        image.onerror = () => {
+          const entry = iconCache.get(url);
+          if (entry) entry.failed = true;
+          render();
+        };
+        image.src = url;
+      });
 
       const width = container.clientWidth || 1000;
       const height = container.clientHeight || 700;
@@ -595,19 +783,20 @@
           const dx = tx - sx;
           const dy = ty - sy;
           const dr = Math.sqrt(dx * dx + dy * dy) * 0.82;
-          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.58)' : 'rgba(150, 224, 247, 0.08)';
-          ctx.lineWidth = active ? 1.8 : 1;
+          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.5)' : 'rgba(150, 224, 247, 0.045)';
+          ctx.lineWidth = active ? 1.6 : 0.8;
           ctx.quadraticCurveTo((sx + tx) / 2, (sy + ty) / 2 - dr * 0.06, tx, ty);
           ctx.stroke();
         });
 
         processed.nodes.forEach((node) => {
           const active = isActiveNode(node);
-          const r = node.kind === 'you' ? 26 : node.kind === 'account' ? 20 : node.kind === 'provider' || node.kind === 'identifier' ? 16 : 13;
+          const hasIcon = Boolean(iconUrlForNode(node));
+          const r = node.kind === 'you' ? 27 : node.kind === 'account' ? 17 : node.kind === 'provider' || node.kind === 'identifier' || node.kind === 'platform' ? 22 : 13;
           const fill = node.kind === 'you'
             ? '#ff5c7a'
             : node.kind === 'account'
-              ? '#f8fafc'
+              ? 'rgba(248, 250, 252, 0.85)'
               : '#0f172a';
           const stroke = node.kind === 'provider'
             ? '#96e0f7'
@@ -635,7 +824,18 @@
           ctx.strokeStyle = node.id === selectedNodeId ? '#ffffff' : stroke;
           ctx.stroke();
 
-          if (node.kind === 'account') {
+          const iconUrl = iconUrlForNode(node);
+          const icon = iconUrl ? iconCache.get(iconUrl) : null;
+          if (icon && icon.loaded && !icon.failed) {
+            const size = r * 1.18;
+            ctx.drawImage(icon.image, x - size / 2, y - size / 2, size, size);
+          } else if (hasIcon || node.kind === 'provider' || node.kind === 'platform') {
+            ctx.fillStyle = '#d7ecff';
+            ctx.font = '800 10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(initialsForNode(node), x, y + 1);
+          } else if (node.kind === 'account') {
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
             ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -644,11 +844,19 @@
 
           ctx.restore();
 
-          const shouldLabel = node.kind === 'you' || node.kind === 'provider' || node.kind === 'identifier' || node.id === selectedNodeId || activeNodeIds?.has(node.id);
+          const shouldLabel = node.kind === 'you'
+            || node.kind === 'provider'
+            || node.kind === 'platform'
+            || node.kind === 'identifier'
+            || node.id === selectedNodeId
+            || (focused && activeNodeIds?.has(node.id));
           if (shouldLabel) {
-            const label = node.kind === 'account'
+            const baseLabel = node.kind === 'account'
               ? (node.username || node.name || node.id)
               : (node.display_name || node.name || node.id);
+            const label = node.synthetic && node.memberCount > 1
+              ? baseLabel + ' (' + node.memberCount + ')'
+              : baseLabel;
             ctx.save();
             ctx.font = node.kind === 'you' ? '800 13px Inter, sans-serif' : '700 11px Inter, sans-serif';
             ctx.textAlign = 'center';
@@ -785,6 +993,7 @@
     const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
     const [layoutMode, setLayoutMode] = useState('spider');
+    const [displayMode, setDisplayMode] = useState('overview');
     const [viewMode, setViewMode] = useState('graph');
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
     const [graph, setGraph] = useState(window.sampleGraph || { nodes: [], relationships: [] });
@@ -820,14 +1029,27 @@
       loadGraph();
     }, []);
 
+    const displayGraph = useMemo(() => (
+      displayMode === 'overview' ? buildOverviewGraph(graph) : graph
+    ), [graph, displayMode]);
+
+    const graphHighlightIds = useMemo(() => {
+      if (!neighborIds || displayMode !== 'overview') return neighborIds;
+      const accountGroupIds = new Map();
+      displayGraph.nodes.filter((node) => node.synthetic).forEach((group) => {
+        (group.members || []).forEach((member) => accountGroupIds.set(member.id, group.id));
+      });
+      return new Set([...neighborIds].map((id) => accountGroupIds.get(id) || id));
+    }, [neighborIds, displayGraph, displayMode]);
+
     const filteredGraph = useMemo(() => {
-      const nodes = graph.nodes.filter((node) => filters.kinds.includes(node.kind));
+      const nodes = displayGraph.nodes.filter((node) => filters.kinds.includes(node.kind));
       const nodeIds = new Set(nodes.map((node) => node.id));
-      const relationships = graph.relationships.filter(
+      const relationships = displayGraph.relationships.filter(
         (rel) => nodeIds.has(rel.source) && nodeIds.has(rel.target)
       );
       return { nodes: nodes, relationships: relationships };
-    }, [graph, filters]);
+    }, [displayGraph, filters]);
 
     const neighborIds = useMemo(() => {
       if (!neighbors?.nodes) return null;
@@ -838,6 +1060,7 @@
       if (!query.trim()) return;
       try {
         const results = await searchNodes(query.trim());
+        setDisplayMode('full');
         const merged = dedupeById([...graph.nodes, ...results]);
         setGraph({ nodes: merged, relationships: graph.relationships });
         if (results[0]) {
@@ -857,15 +1080,22 @@
     };
 
     const handleSelectNode = async (node) => {
+      if (!node) return;
       setSelectedNode(node);
       setSelectedRelationship(null);
       setNeighbors(null);
+      if (node.synthetic) return;
       try {
         const data = await getNeighbors(node.id, 1);
         setNeighbors(data);
       } catch {
         setNeighbors(null);
       }
+    };
+
+    const handleSelectMember = async (node) => {
+      setDisplayMode('full');
+      await handleSelectNode(node);
     };
 
     const handleSelectRelationship = (relationship) => {
@@ -933,6 +1163,14 @@
           onSearch=${handleSearch}
           onToggleLayout=${() => setLayoutMode((mode) => (mode === 'spider' ? 'layered' : 'spider'))}
           layoutMode=${layoutMode}
+          displayMode=${displayMode}
+          onToggleDisplayMode=${() => {
+            const next = displayMode === 'overview' ? 'full' : 'overview';
+            setDisplayMode(next);
+            setSelectedNode(null);
+            setSelectedRelationship(null);
+            setNeighbors(null);
+          }}
           viewMode=${viewMode}
           onToggleView=${() => setViewMode((mode) => (mode === 'graph' ? 'list' : 'graph'))}
           locale=${locale}
@@ -954,7 +1192,7 @@
                     layoutMode=${layoutMode}
                     selectedNodeId=${selectedNode?.id}
                     focusNodeId=${selectedNode?.id}
-                    highlightIds=${neighborIds}
+                    highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
                   />
@@ -975,6 +1213,7 @@
             relationship=${selectedRelationship}
             neighbors=${neighbors}
             onSelectNode=${handleSelectNode}
+            onSelectMember=${handleSelectMember}
             locale=${locale}
             t=${t}
           />
