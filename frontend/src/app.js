@@ -1119,6 +1119,11 @@
       displayMode === 'overview' ? buildOverviewGraph(graph) : graph
     ), [graph, displayMode]);
 
+    const neighborIds = useMemo(() => {
+      if (!neighbors?.nodes) return null;
+      return new Set(neighbors.nodes.map((node) => node.id));
+    }, [neighbors]);
+
     const graphHighlightIds = useMemo(() => {
       if (!neighborIds || displayMode !== 'overview') return neighborIds;
       const accountGroupIds = new Map();
@@ -1136,11 +1141,6 @@
       );
       return { nodes: nodes, relationships: relationships };
     }, [displayGraph, filters]);
-
-    const neighborIds = useMemo(() => {
-      if (!neighbors?.nodes) return null;
-      return new Set(neighbors.nodes.map((node) => node.id));
-    }, [neighbors]);
 
     const handleSearch = async () => {
       if (!query.trim()) return;
