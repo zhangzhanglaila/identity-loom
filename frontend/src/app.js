@@ -5,6 +5,137 @@
   const API_BASE = 'http://localhost:8000';
   const visibleKinds = ['you', 'provider', 'platform', 'account', 'identifier', 'tag'];
 
+  const translations = {
+    zh: {
+      appName: '身份图谱',
+      searchPlaceholder: '搜索节点',
+      search: '搜索',
+      spider: '蜘蛛网',
+      layered: '分层',
+      graphView: '图谱',
+      listView: '列表',
+      addNode: '新增节点',
+      addEdge: '新增关系',
+      import: '导入',
+      toggleView: '切换视图',
+      languageToggle: 'EN',
+      overview: '概览',
+      nodes: '节点',
+      edges: '关系',
+      kinds: '节点类型',
+      depth: '深度',
+      current: '当前',
+      details: '详情',
+      selectNodeOrEdge: '请选择节点或关系。',
+      edgePrefix: '关系：',
+      connections: '关联',
+      accounts: '账号',
+      name: '名称',
+      type: '类型',
+      links: '链接',
+      noItems: '暂无内容。',
+      noConnections: '暂无关联。',
+      importGraph: '导入图谱',
+      json: 'JSON',
+      csv: 'CSV',
+      close: '关闭',
+      importAction: '导入',
+      nodeIdPrompt: '节点 ID',
+      nodeKindPrompt: '节点类型',
+      nodeNamePrompt: '节点名称',
+      relationshipIdPrompt: '关系 ID',
+      sourceNodeIdPrompt: '源节点 ID',
+      targetNodeIdPrompt: '目标节点 ID',
+      relationTypePrompt: '关系类型',
+      graphKindLabels: {
+        you: 'YOU',
+        provider: '身份源',
+        platform: '平台',
+        account: '账号',
+        identifier: '标识',
+        tag: '标签'
+      },
+      listTabs: {
+        connections: '连接',
+        accounts: '账号'
+      },
+      importPlaceholders: {
+        json: '{"nodes":[],"relationships":[]}',
+        csv: 'record_type,id,source,target,relation_type,name'
+      }
+    },
+    en: {
+      appName: 'Identity Web',
+      searchPlaceholder: 'Search nodes',
+      search: 'Search',
+      spider: 'Spider',
+      layered: 'Layered',
+      graphView: 'Graph',
+      listView: 'List',
+      addNode: 'Add Node',
+      addEdge: 'Add Edge',
+      import: 'Import',
+      toggleView: 'Toggle View',
+      languageToggle: '中文',
+      overview: 'Overview',
+      nodes: 'Nodes',
+      edges: 'Edges',
+      kinds: 'Kinds',
+      depth: 'Depth',
+      current: 'Current',
+      details: 'Details',
+      selectNodeOrEdge: 'Select a node or edge.',
+      edgePrefix: 'Edge: ',
+      connections: 'Connections',
+      accounts: 'Accounts',
+      name: 'Name',
+      type: 'Type',
+      links: 'Links',
+      noItems: 'No items.',
+      noConnections: 'No connections.',
+      importGraph: 'Import Graph',
+      json: 'JSON',
+      csv: 'CSV',
+      close: 'Close',
+      importAction: 'Import',
+      nodeIdPrompt: 'Node id',
+      nodeKindPrompt: 'Node kind',
+      nodeNamePrompt: 'Node name',
+      relationshipIdPrompt: 'Relationship id',
+      sourceNodeIdPrompt: 'Source node id',
+      targetNodeIdPrompt: 'Target node id',
+      relationTypePrompt: 'Relation type',
+      graphKindLabels: {
+        you: 'YOU',
+        provider: 'Provider',
+        platform: 'Platform',
+        account: 'Account',
+        identifier: 'Identifier',
+        tag: 'Tag'
+      },
+      listTabs: {
+        connections: 'Connections',
+        accounts: 'Accounts'
+      },
+      importPlaceholders: {
+        json: '{"nodes":[],"relationships":[]}',
+        csv: 'record_type,id,source,target,relation_type,name'
+      }
+    }
+  };
+
+  function createT(locale) {
+    const dict = translations[locale] || translations.en;
+    return function t(key) {
+      return dict[key] || translations.en[key] || key;
+    };
+  }
+
+  function getKindLabel(locale, kind) {
+    const dict = translations[locale] || translations.en;
+    return (dict.graphKindLabels && dict.graphKindLabels[kind]) || kind;
+  }
+
   const kindColors = {
     you: '#ff5c7a',
     provider: '#1f2937',
@@ -77,20 +208,24 @@
     const layoutMode = props.layoutMode;
     const viewMode = props.viewMode;
     const onToggleView = props.onToggleView;
+    const locale = props.locale;
+    const onToggleLanguage = props.onToggleLanguage;
+    const t = props.t;
     const onAddNode = props.onAddNode;
     const onAddRelationship = props.onAddRelationship;
     const onImport = props.onImport;
 
     return html`
       <div className="toolbar">
-        <div className="toolbar__brand">Identity Web</div>
-        <input className="toolbar__search" value=${q} onInput=${(e) => onQueryChange(e.target.value)} placeholder="Search nodes" />
-        <button className="toolbar__button" onClick=${onSearch}>Search</button>
-        <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? 'Spider' : 'Layered'}</button>
-        <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? 'Graph' : 'List'}</button>
-        <button className="toolbar__button" onClick=${onAddNode}>Add Node</button>
-        <button className="toolbar__button" onClick=${onAddRelationship}>Add Edge</button>
-        <button className="toolbar__button" onClick=${onImport}>Import</button>
+        <div className="toolbar__brand">${t('appName')}</div>
+        <input className="toolbar__search" value=${q} onInput=${(e) => onQueryChange(e.target.value)} placeholder=${t('searchPlaceholder')} />
+        <button className="toolbar__button" onClick=${onSearch}>${t('search')}</button>
+        <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? t('spider') : t('layered')}</button>
+        <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? t('graphView') : t('listView')}</button>
+        <button className="toolbar__button" onClick=${onAddNode}>${t('addNode')}</button>
+        <button className="toolbar__button" onClick=${onAddRelationship}>${t('addEdge')}</button>
+        <button className="toolbar__button" onClick=${onImport}>${t('import')}</button>
+        <button className="toolbar__button toolbar__button--language" onClick=${onToggleLanguage} lang=${locale === 'zh' ? 'en' : 'zh'}>${t('languageToggle')}</button>
       </div>
     `;
   }
@@ -104,6 +239,8 @@
     const relationships = props.relationships || [];
     const selectedId = props.selectedId;
     const onSelectNode = props.onSelectNode;
+    const locale = props.locale;
+    const t = props.t;
     const [tab, setTab] = useState('connections');
 
     const connections = nodes.filter(isConnectionNode);
@@ -135,20 +272,20 @@
       <div className="list-view">
         <div className="list-view__tabs">
           <button className=${'list-view__tab ' + (tab === 'connections' ? 'is-active' : '')} onClick=${() => setTab('connections')}>
-            Connections (${connections.length})
+            ${t('listTabs').connections} (${connections.length})
           </button>
           <button className=${'list-view__tab ' + (tab === 'accounts' ? 'is-active' : '')} onClick=${() => setTab('accounts')}>
-            Accounts (${accounts.length})
+            ${t('listTabs').accounts} (${accounts.length})
           </button>
         </div>
         <div className="list-view__header">
-          <div>Name</div>
-          <div>Type</div>
-          <div className="list-view__header-right">Links</div>
+          <div>${t('name')}</div>
+          <div>${t('type')}</div>
+          <div className="list-view__header-right">${t('links')}</div>
         </div>
         <div className="list-view__body">
           ${activeItems.length === 0
-            ? html`<div className="panel__empty">No items.</div>`
+            ? html`<div className="panel__empty">${t('noItems')}</div>`
             : activeItems.map((item) => {
                 const selected = String(item.id) === String(selectedId);
                 const links = tab === 'connections'
@@ -157,7 +294,7 @@
                 return html`
                   <button key=${item.id} type="button" className=${'list-view__row ' + (selected ? 'is-selected' : '')} onClick=${() => onSelectNode(item)}>
                     <div className="list-view__name">${item.display_name || item.name || item.id}</div>
-                    <div className="list-view__kind">${item.kind}</div>
+                    <div className="list-view__kind">${getKindLabel(locale, item.kind)}</div>
                     <div className="list-view__links">${links.length}</div>
                   </button>
                 `;
@@ -171,6 +308,8 @@
     const filters = props.filters;
     const setFilters = props.setFilters;
     const stats = props.stats;
+    const locale = props.locale;
+    const t = props.t;
 
     const toggleKind = (kind) => {
       const next = filters.kinds.includes(kind)
@@ -182,33 +321,33 @@
     return html`
       <aside className="sidebar">
         <div className="panel">
-          <div className="panel__title">Overview</div>
+          <div className="panel__title">${t('overview')}</div>
           <div className="stat-grid">
             <div className="stat">
-              <div className="stat__label">Nodes</div>
+              <div className="stat__label">${t('nodes')}</div>
               <div className="stat__value">${stats.nodes ?? 0}</div>
             </div>
             <div className="stat">
-              <div className="stat__label">Edges</div>
+              <div className="stat__label">${t('edges')}</div>
               <div className="stat__value">${stats.relationships ?? 0}</div>
             </div>
           </div>
         </div>
 
         <div className="panel">
-          <div className="panel__title">Kinds</div>
+          <div className="panel__title">${t('kinds')}</div>
           ${visibleKinds.map((kind) => html`
             <label className="checkline" key=${kind}>
               <input type="checkbox" checked=${filters.kinds.includes(kind)} onChange=${() => toggleKind(kind)} />
-              <span>${kind}</span>
+              <span>${getKindLabel(locale, kind)}</span>
             </label>
           `)}
         </div>
 
         <div className="panel">
-          <div className="panel__title">Depth</div>
+          <div className="panel__title">${t('depth')}</div>
           <input type="range" min="1" max="3" value=${filters.depth} onInput=${(e) => setFilters({ ...filters, depth: Number(e.target.value) })} />
-          <div className="panel__note">Current: ${filters.depth}</div>
+          <div className="panel__note">${t('current')}: ${filters.depth}</div>
         </div>
       </aside>
     `;
@@ -219,20 +358,21 @@
     const relationship = props.relationship;
     const neighbors = props.neighbors;
     const onSelectNode = props.onSelectNode;
+    const t = props.t;
 
     if (!node && !relationship) {
       return html`
         <aside className="detail-panel">
           <div className="panel">
-            <div className="panel__title">Details</div>
-            <div className="panel__empty">Select a node or edge.</div>
+            <div className="panel__title">${t('details')}</div>
+            <div className="panel__empty">${t('selectNodeOrEdge')}</div>
           </div>
         </aside>
       `;
     }
 
     if (relationship) {
-      const title = 'Edge: ' + (relationship.label || relationship.relation_type);
+      const title = t('edgePrefix') + (relationship.label || relationship.relation_type);
       return html`
         <aside className="detail-panel">
           <div className="panel">
@@ -274,9 +414,9 @@
         </div>
 
         <div className="panel">
-          <div className="panel__title">Connections</div>
+          <div className="panel__title">${t('connections')}</div>
           ${connections.length === 0
-            ? html`<div className="panel__empty">No connections.</div>`
+            ? html`<div className="panel__empty">${t('noConnections')}</div>`
             : html`<div className="connection-list">
                 ${connections.map((c) => html`
                   <button key=${c.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(c.other)}>
@@ -295,6 +435,7 @@
     const onClose = props.onClose;
     const onImportJson = props.onImportJson;
     const onImportCsv = props.onImportCsv;
+    const t = props.t;
     const [mode, setMode] = useState('json');
     const [text, setText] = useState('');
 
@@ -314,14 +455,14 @@
     return html`
       <div className="modal-backdrop">
         <div className="modal">
-          <div className="panel__title">Import Graph</div>
+          <div className="panel__title">${t('importGraph')}</div>
           <div className="mode-switch">
-            <button className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>JSON</button>
-            <button className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>CSV</button>
+            <button className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>${t('json')}</button>
+            <button className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>${t('csv')}</button>
           </div>
-          <textarea className="modal__textarea" value=${text} onInput=${(e) => setText(e.target.value)} placeholder=${mode === 'json' ? '{"nodes":[],"relationships":[]}' : 'record_type,id,source,target,relation_type,name'}></textarea>
+          <textarea className="modal__textarea" value=${text} onInput=${(e) => setText(e.target.value)} placeholder=${t('importPlaceholders')[mode]}></textarea>
           <div className="modal__actions">
-            <button className="toolbar__button" onClick=${onClose}>Close</button>
+            <button className="toolbar__button" onClick=${onClose}>${t('close')}</button>
             <button
               className="toolbar__button"
               disabled=${!preview}
@@ -334,7 +475,7 @@
                 }
               }}
             >
-              Import
+              ${t('importAction')}
             </button>
           </div>
         </div>
@@ -641,6 +782,7 @@
   }
 
   function App() {
+    const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
     const [layoutMode, setLayoutMode] = useState('spider');
     const [viewMode, setViewMode] = useState('graph');
@@ -654,6 +796,7 @@
       nodes: (window.sampleGraph?.nodes || []).length,
       relationships: (window.sampleGraph?.relationships || []).length
     });
+    const t = createT(locale);
 
     const loadGraph = async () => {
       try {
@@ -732,10 +875,10 @@
     };
 
     const handleAddNode = async () => {
-      const id = window.prompt('Node id');
+      const id = window.prompt(t('nodeIdPrompt'));
       if (!id) return;
-      const kind = window.prompt('Node kind', 'account') || 'account';
-      const name = window.prompt('Node name');
+      const kind = window.prompt(t('nodeKindPrompt'), 'account') || 'account';
+      const name = window.prompt(t('nodeNamePrompt'));
       if (!name) return;
       const node = { id: id, kind: kind, name: name };
       try {
@@ -747,11 +890,11 @@
     };
 
     const handleAddRelationship = async () => {
-      const id = window.prompt('Relationship id');
+      const id = window.prompt(t('relationshipIdPrompt'));
       if (!id) return;
-      const source = window.prompt('Source node id');
-      const target = window.prompt('Target node id');
-      const relation_type = window.prompt('Relation type', 'related_to') || 'related_to';
+      const source = window.prompt(t('sourceNodeIdPrompt'));
+      const target = window.prompt(t('targetNodeIdPrompt'));
+      const relation_type = window.prompt(t('relationTypePrompt'), 'related_to') || 'related_to';
       if (!source || !target) return;
       const rel = { id: id, source: source, target: target, relation_type: relation_type, label: relation_type };
       try {
@@ -792,13 +935,16 @@
           layoutMode=${layoutMode}
           viewMode=${viewMode}
           onToggleView=${() => setViewMode((mode) => (mode === 'graph' ? 'list' : 'graph'))}
+          locale=${locale}
+          t=${t}
+          onToggleLanguage=${() => setLocale((current) => (current === 'zh' ? 'en' : 'zh'))}
           onAddNode=${handleAddNode}
           onAddRelationship=${handleAddRelationship}
           onImport=${() => setImportOpen(true)}
         />
 
         <div className="content">
-          <${Sidebar} filters=${filters} setFilters=${setFilters} stats=${stats} />
+          <${Sidebar} filters=${filters} setFilters=${setFilters} stats=${stats} locale=${locale} t=${t} />
           <main className="graph-area">
             ${viewMode === 'graph'
               ? html`
@@ -819,6 +965,8 @@
                     relationships=${filteredGraph.relationships}
                     selectedId=${selectedNode?.id}
                     onSelectNode=${handleSelectNode}
+                    locale=${locale}
+                    t=${t}
                   />
                 `}
           </main>
@@ -827,6 +975,8 @@
             relationship=${selectedRelationship}
             neighbors=${neighbors}
             onSelectNode=${handleSelectNode}
+            locale=${locale}
+            t=${t}
           />
         </div>
 
@@ -835,6 +985,8 @@
           onClose=${() => setImportOpen(false)}
           onImportJson=${handleImportJson}
           onImportCsv=${handleImportCsv}
+          locale=${locale}
+          t=${t}
         />
       </div>
     `;

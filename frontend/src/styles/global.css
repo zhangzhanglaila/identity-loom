@@ -95,6 +95,11 @@ button, input, textarea {
   box-shadow: var(--glow);
 }
 
+.toolbar__button--language {
+  min-width: 64px;
+  color: var(--accent-3);
+}
+
 .content {
   flex: 1;
   min-height: 0;
