@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const { useEffect, useMemo, useState, useRef } = React;
   const html = htm.bind(React.createElement);
 
@@ -18,6 +18,9 @@
       addEdge: '新增关系',
       import: '导入',
       toggleView: '切换视图',
+      filters: '筛选',
+      showDetails: '详情',
+      closePanel: '关闭面板',
       languageToggle: 'EN',
       fullGraph: '全部',
       overview: '概览',
@@ -40,6 +43,11 @@
       json: 'JSON',
       csv: 'CSV',
       close: '关闭',
+      loading: '正在加载本地图谱…',
+      loadFailed: '无法读取本地图谱，请先启动 Neo4j 和后端服务。',
+      emptyGraph: '本地图谱暂无数据。',
+      noSearchResults: '没有找到匹配节点。',
+      searchFailed: '搜索失败，请确认后端服务正常。',
       importAction: '导入',
       nodeIdPrompt: '节点 ID',
       nodeKindPrompt: '节点类型',
@@ -77,6 +85,9 @@
       addEdge: 'Add Edge',
       import: 'Import',
       toggleView: 'Toggle View',
+      filters: 'Filters',
+      showDetails: 'Details',
+      closePanel: 'Close panel',
       languageToggle: '中文',
       overview: 'Overview',
       fullGraph: 'Full',
@@ -99,6 +110,11 @@
       json: 'JSON',
       csv: 'CSV',
       close: 'Close',
+      loading: 'Loading local graph…',
+      loadFailed: 'Unable to read the local graph. Start Neo4j and the backend first.',
+      emptyGraph: 'The local graph has no data yet.',
+      noSearchResults: 'No matching nodes found.',
+      searchFailed: 'Search failed. Check that the backend is running.',
       importAction: 'Import',
       nodeIdPrompt: 'Node id',
       nodeKindPrompt: 'Node kind',
@@ -178,6 +194,11 @@
   function formatRelationLabel(locale, relationship) {
     const raw = relationship?.label || relationship?.relation_type || 'related_to';
     return relationLabels[raw]?.[locale] || raw;
+  }
+
+  function isUserVisibleRelationship(relationship) {
+    const type = relationship?.relation_type || relationship?.label;
+    return Boolean(relationship) && !['owns', 'belongs_to', 'context'].includes(type);
   }
 
   function detailEntries(node, locale) {
@@ -271,7 +292,9 @@
 
   function accountGroupKey(node) {
     const platform = normalizeIconKey(node?.platform);
-    return platform || ('account-' + normalizeIconKey(node?.id || node?.name) || 'unknown');
+    if (platform) return platform;
+    const fallback = normalizeIconKey(node?.id || node?.name);
+    return fallback ? 'account-' + fallback : 'unknown';
   }
 
   function accountGroupLabel(node) {
@@ -281,20 +304,36 @@
   function buildOverviewGraph(graph) {
     const sourceNodes = graph?.nodes || [];
     const sourceRelationships = graph?.relationships || [];
+    const nodeById = new Map(sourceNodes.map((node) => [node.id, node]));
+    const accountPlatformNames = new Map();
     const accountGroups = new Map();
     const accountToGroup = new Map();
 
+    sourceRelationships
+      .filter((relationship) => (relationship.relation_type || relationship.label) === 'belongs_to')
+      .forEach((relationship) => {
+        const sourceNode = nodeById.get(relationship.source);
+        const targetNode = nodeById.get(relationship.target);
+        if (sourceNode?.kind === 'account' && targetNode) {
+          accountPlatformNames.set(sourceNode.id, targetNode.display_name || targetNode.name || targetNode.platform || targetNode.id);
+        }
+        if (targetNode?.kind === 'account' && sourceNode) {
+          accountPlatformNames.set(targetNode.id, sourceNode.display_name || sourceNode.name || sourceNode.platform || sourceNode.id);
+        }
+      });
+
     sourceNodes.filter((node) => node.kind === 'account').forEach((account) => {
-      const key = accountGroupKey(account);
+      const platformName = account.platform || accountPlatformNames.get(account.id);
+      const key = normalizeIconKey(platformName) || accountGroupKey(account);
       if (!accountGroups.has(key)) {
-        const label = accountGroupLabel(account);
+        const label = String(platformName || accountGroupLabel(account)).trim();
         accountGroups.set(key, {
           id: 'platform-group:' + key,
           kind: 'platform',
           synthetic: true,
           name: label,
           display_name: label,
-          platform: account.platform || label,
+          platform: platformName || label,
           memberCount: 0,
           members: []
         });
@@ -305,14 +344,25 @@
       accountToGroup.set(account.id, group.id);
     });
 
+    const visibleRelationships = sourceRelationships.filter(isUserVisibleRelationship);
+    const participatingIds = new Set();
+    visibleRelationships.forEach((relationship) => {
+      participatingIds.add(relationship.source);
+      participatingIds.add(relationship.target);
+    });
+
     const nodes = sourceNodes
-      .filter((node) => node.kind !== 'account')
+      .filter((node) => {
+        if (node.kind === 'account' || node.kind === 'platform' || node.kind === 'tag') return false;
+        if (node.kind === 'you') return true;
+        return participatingIds.has(node.id);
+      })
       .map((node) => ({ ...node }));
     nodes.push(...accountGroups.values());
 
     const nodeIds = new Set(nodes.map((node) => node.id));
     const relationshipMap = new Map();
-    sourceRelationships.forEach((relationship) => {
+    visibleRelationships.forEach((relationship) => {
       const source = accountToGroup.get(relationship.source) || relationship.source;
       const target = accountToGroup.get(relationship.target) || relationship.target;
       if (!nodeIds.has(source) || !nodeIds.has(target) || source === target) return;
@@ -409,15 +459,39 @@
     const onAddNode = props.onAddNode;
     const onAddRelationship = props.onAddRelationship;
     const onImport = props.onImport;
+    const onToggleSidebar = props.onToggleSidebar;
+    const onToggleDetails = props.onToggleDetails;
+    const isSidebarOpen = props.isSidebarOpen;
+    const isDetailsOpen = props.isDetailsOpen;
+    const searchMessage = props.searchMessage;
 
     return html`
       <div className="toolbar">
         <div className="toolbar__brand">${t('appName')}</div>
-        <input className="toolbar__search" value=${q} onInput=${(e) => onQueryChange(e.target.value)} placeholder=${t('searchPlaceholder')} />
+        <input
+          className="toolbar__search"
+          value=${q}
+          onInput=${(e) => onQueryChange(e.target.value)}
+          onKeyDown=${(e) => e.key === 'Enter' && onSearch()}
+          placeholder=${t('searchPlaceholder')}
+        />
+        ${searchMessage ? html`<span className="toolbar__search-message">${searchMessage}</span>` : null}
         <button className="toolbar__button" onClick=${onSearch}>${t('search')}</button>
         <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? t('spider') : t('layered')}</button>
         <button className="toolbar__button" onClick=${onToggleDisplayMode}>${displayMode === 'overview' ? t('fullGraph') : t('overview')}</button>
         <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? t('graphView') : t('listView')}</button>
+        <button
+          className=${'toolbar__button toolbar__button--icon ' + (isSidebarOpen ? 'is-active' : '')}
+          onClick=${onToggleSidebar}
+          title=${t('filters')}
+          aria-label=${t('filters')}
+        >☰</button>
+        <button
+          className=${'toolbar__button toolbar__button--icon ' + (isDetailsOpen ? 'is-active' : '')}
+          onClick=${onToggleDetails}
+          title=${t('showDetails')}
+          aria-label=${t('showDetails')}
+        >i</button>
         <button className="toolbar__button" onClick=${onAddNode}>${t('addNode')}</button>
         <button className="toolbar__button" onClick=${onAddRelationship}>${t('addEdge')}</button>
         <button className="toolbar__button" onClick=${onImport}>${t('import')}</button>
@@ -506,6 +580,7 @@
     const stats = props.stats;
     const locale = props.locale;
     const t = props.t;
+    const onClose = props.onClose;
 
     const toggleKind = (kind) => {
       const next = filters.kinds.includes(kind)
@@ -517,7 +592,10 @@
     return html`
       <aside className="sidebar">
         <div className="panel">
-          <div className="panel__title">${t('overview')}</div>
+          <div className="panel__heading">
+            <div className="panel__title">${t('overview')}</div>
+            <button className="panel__close" onClick=${onClose} title=${t('closePanel')} aria-label=${t('closePanel')}>×</button>
+          </div>
           <div className="stat-grid">
             <div className="stat">
               <div className="stat__label">${t('nodes')}</div>
@@ -559,12 +637,20 @@
     const onSelectMember = props.onSelectMember;
     const locale = props.locale;
     const t = props.t;
+    const onClose = props.onClose;
+
+    const panelHeading = (title) => html`
+      <div className="panel__heading">
+        <div className="panel__title">${title}</div>
+        <button className="panel__close" onClick=${onClose} title=${t('closePanel')} aria-label=${t('closePanel')}>×</button>
+      </div>
+    `;
 
     if (!node && !relationship) {
       return html`
         <aside className="detail-panel">
           <div className="panel">
-            <div className="panel__title">${t('details')}</div>
+            ${panelHeading(t('details'))}
             <div className="panel__empty">${t('selectNodeOrEdge')}</div>
           </div>
         </aside>
@@ -576,7 +662,7 @@
       return html`
         <aside className="detail-panel">
           <div className="panel">
-            <div className="panel__title">${title}</div>
+            ${panelHeading(title)}
             <div className="detail-list">
               ${relationshipEntries(relationship, locale).map(([key, value]) => html`
                 <div className="detail-row" key=${key}>
@@ -604,7 +690,7 @@
       return html`
         <aside className="detail-panel">
           <div className="panel">
-            <div className="panel__title">${title}</div>
+            ${panelHeading(title)}
             <div className="detail-list">
               <div className="detail-row">
                 <span className="detail-row__key">${t('accounts')}</span>
@@ -656,7 +742,7 @@
     return html`
       <aside className="detail-panel">
         <div className="panel">
-          <div className="panel__title">${title}</div>
+          ${panelHeading(title)}
           <div className="detail-list">
               ${detailEntries(node, locale).map(([key, value]) => html`
                 <div className="detail-row" key=${key}>
@@ -811,6 +897,12 @@
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collide', d3.forceCollide().radius((d) => (d.kind === 'account' ? 26 : d.kind === 'you' ? 34 : 22)));
 
+      const rootNode = processed.nodes.find((node) => node.kind === 'you');
+      if (rootNode) {
+        rootNode.fx = width / 2;
+        rootNode.fy = height / 2;
+      }
+
       if (layoutMode === 'layered') {
         simulation.force(
           'y',
@@ -839,6 +931,17 @@
       });
       let transform = d3.zoomIdentity;
       d3.select(canvas).call(zoom);
+
+      const centerOnFocus = () => {
+        if (!focusNodeId) return;
+        const focusNode = processed.nodes.find((node) => node.id === focusNodeId);
+        if (!focusNode || !Number.isFinite(focusNode.x) || !Number.isFinite(focusNode.y)) return;
+        const scale = 1.35;
+        const nextTransform = d3.zoomIdentity
+          .translate(width / 2 - focusNode.x * scale, height / 2 - focusNode.y * scale)
+          .scale(scale);
+        d3.select(canvas).call(zoom.transform, nextTransform);
+      };
 
       const linked = new Map();
       processed.links.forEach((link) => {
@@ -869,8 +972,8 @@
           const dx = tx - sx;
           const dy = ty - sy;
           const dr = Math.sqrt(dx * dx + dy * dy) * 0.82;
-          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.5)' : 'rgba(150, 224, 247, 0.045)';
-          ctx.lineWidth = active ? 1.6 : 0.8;
+          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.56)' : 'rgba(150, 224, 247, 0.16)';
+          ctx.lineWidth = active ? 1.6 : 0.7;
           ctx.quadraticCurveTo((sx + tx) / 2, (sy + ty) / 2 - dr * 0.06, tx, ty);
           ctx.stroke();
         });
@@ -932,10 +1035,9 @@
 
           const shouldLabel = node.kind === 'you'
             || node.kind === 'provider'
-            || node.kind === 'platform'
             || node.kind === 'identifier'
             || node.id === selectedNodeId
-            || (focused && activeNodeIds?.has(node.id));
+            || (focused && activeNodeIds?.has(node.id) && !node.synthetic);
           if (shouldLabel) {
             const baseLabel = node.kind === 'account'
               ? (node.username || node.name || node.id)
@@ -969,6 +1071,7 @@
 
       const ticked = () => render();
       simulation.on('tick', ticked);
+      simulation.on('end', centerOnFocus);
       render();
 
       let dragNode = null;
@@ -992,7 +1095,7 @@
       const onPointerDown = (event) => {
         const rect = canvas.getBoundingClientRect();
         const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
-        if (node) {
+        if (node && node.kind !== 'you') {
           dragNode = node;
           node.fx = node.x;
           node.fy = node.y;
@@ -1053,6 +1156,10 @@
         canvas.style.height = nextHeight + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         simulation.force('center', d3.forceCenter(nextWidth / 2, nextHeight / 2));
+        if (rootNode) {
+          rootNode.fx = nextWidth / 2;
+          rootNode.fy = nextHeight / 2;
+        }
         simulation.alpha(0.35).restart();
       });
       resizeObserver.observe(container);
@@ -1081,34 +1188,32 @@
     const [layoutMode, setLayoutMode] = useState('spider');
     const [displayMode, setDisplayMode] = useState('overview');
     const [viewMode, setViewMode] = useState('graph');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
-    const [graph, setGraph] = useState(window.sampleGraph || { nodes: [], relationships: [] });
+    const [graph, setGraph] = useState({ nodes: [], relationships: [] });
     const [selectedNode, setSelectedNode] = useState(null);
     const [selectedRelationship, setSelectedRelationship] = useState(null);
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
-    const [stats, setStats] = useState({
-      nodes: (window.sampleGraph?.nodes || []).length,
-      relationships: (window.sampleGraph?.relationships || []).length
-    });
+    const [dataState, setDataState] = useState('loading');
+    const [searchState, setSearchState] = useState('idle');
     const t = createT(locale);
 
     const loadGraph = async () => {
+      setDataState('loading');
       try {
         const data = await getOverview(1000);
-        if (data?.nodes?.length) {
+        if (Array.isArray(data?.nodes) && Array.isArray(data?.relationships)) {
           setGraph({ nodes: data.nodes, relationships: data.relationships });
-          setStats({ nodes: data.nodes.length, relationships: data.relationships.length });
+          setDataState(data.nodes.length > 0 ? 'ready' : 'empty');
           return;
         }
+        throw new Error('Invalid graph response');
       } catch {
-        // fall through
+        setGraph({ nodes: [], relationships: [] });
+        setDataState('error');
       }
-      setGraph(window.sampleGraph || { nodes: [], relationships: [] });
-      setStats({
-        nodes: (window.sampleGraph?.nodes || []).length,
-        relationships: (window.sampleGraph?.relationships || []).length
-      });
     };
 
     useEffect(() => {
@@ -1125,13 +1230,19 @@
     }, [neighbors]);
 
     const graphHighlightIds = useMemo(() => {
-      if (!neighborIds || displayMode !== 'overview') return neighborIds;
+      const localNeighborIds = selectedNode
+        ? new Set(displayGraph.relationships
+            .filter((rel) => rel.source === selectedNode.id || rel.target === selectedNode.id)
+            .map((rel) => rel.source === selectedNode.id ? rel.target : rel.source))
+        : null;
+      const sourceIds = neighborIds || localNeighborIds;
+      if (!sourceIds || displayMode !== 'overview') return sourceIds;
       const accountGroupIds = new Map();
       displayGraph.nodes.filter((node) => node.synthetic).forEach((group) => {
         (group.members || []).forEach((member) => accountGroupIds.set(member.id, group.id));
       });
-      return new Set([...neighborIds].map((id) => accountGroupIds.get(id) || id));
-    }, [neighborIds, displayGraph, displayMode]);
+      return new Set([...sourceIds].map((id) => accountGroupIds.get(id) || id));
+    }, [neighborIds, displayGraph, displayMode, selectedNode]);
 
     const filteredGraph = useMemo(() => {
       const nodes = displayGraph.nodes.filter((node) => filters.kinds.includes(node.kind));
@@ -1142,10 +1253,30 @@
       return { nodes: nodes, relationships: relationships };
     }, [displayGraph, filters]);
 
+    const displayStats = useMemo(() => ({
+      nodes: filteredGraph.nodes.length,
+      relationships: filteredGraph.relationships.length
+    }), [filteredGraph]);
+
+    const searchMessage = searchState === 'empty'
+      ? t('noSearchResults')
+      : searchState === 'error'
+        ? t('searchFailed')
+        : null;
+
     const handleSearch = async () => {
-      if (!query.trim()) return;
+      const term = query.trim();
+      if (!term) {
+        setSearchState('idle');
+        return;
+      }
       try {
-        const results = await searchNodes(query.trim());
+        const results = await searchNodes(term);
+        if (!Array.isArray(results) || results.length === 0) {
+          setSearchState('empty');
+          return;
+        }
+        setSearchState('ready');
         setDisplayMode('full');
         const merged = dedupeById([...graph.nodes, ...results]);
         setGraph({ nodes: merged, relationships: graph.relationships });
@@ -1153,6 +1284,7 @@
           setSelectedNode(results[0]);
           setSelectedRelationship(null);
           setNeighbors(null);
+          setIsDetailsOpen(true);
           try {
             const data = await getNeighbors(results[0].id, 1);
             setNeighbors(data);
@@ -1161,7 +1293,7 @@
           }
         }
       } catch {
-        return;
+        setSearchState('error');
       }
     };
 
@@ -1170,6 +1302,7 @@
       setSelectedNode(node);
       setSelectedRelationship(null);
       setNeighbors(null);
+      setIsDetailsOpen(true);
       if (node.synthetic) return;
       try {
         const data = await getNeighbors(node.id, 1);
@@ -1188,6 +1321,7 @@
       setSelectedRelationship(relationship);
       setSelectedNode(null);
       setNeighbors(null);
+      setIsDetailsOpen(true);
     };
 
     const handleAddNode = async () => {
@@ -1265,12 +1399,28 @@
           onAddNode=${handleAddNode}
           onAddRelationship=${handleAddRelationship}
           onImport=${() => setImportOpen(true)}
+          onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
+          onToggleDetails=${() => setIsDetailsOpen((open) => !open)}
+          isSidebarOpen=${isSidebarOpen}
+          isDetailsOpen=${isDetailsOpen}
+          searchMessage=${searchMessage}
         />
 
         <div className="content">
-          <${Sidebar} filters=${filters} setFilters=${setFilters} stats=${stats} locale=${locale} t=${t} />
+          ${isSidebarOpen
+            ? html`<${Sidebar}
+                filters=${filters}
+                setFilters=${setFilters}
+                stats=${displayStats}
+                locale=${locale}
+                t=${t}
+                onClose=${() => setIsSidebarOpen(false)}
+              />`
+            : null}
           <main className="graph-area">
-            ${viewMode === 'graph'
+            ${dataState !== 'ready'
+              ? html`<div className="graph-status graph-status--${dataState}">${t(dataState === 'loading' ? 'loading' : dataState === 'empty' ? 'emptyGraph' : 'loadFailed')}</div>`
+              : viewMode === 'graph'
               ? html`
                   <${GraphCanvas}
                     nodes=${filteredGraph.nodes}
@@ -1294,17 +1444,20 @@
                   />
                 `}
           </main>
-          <${DetailPanel}
-            node=${selectedNode}
-            relationship=${selectedRelationship}
-            neighbors=${neighbors}
-            graphNodes=${filteredGraph.nodes}
-            graphRelationships=${filteredGraph.relationships}
-            onSelectNode=${handleSelectNode}
-            onSelectMember=${handleSelectMember}
-            locale=${locale}
-            t=${t}
-          />
+          ${isDetailsOpen
+            ? html`<${DetailPanel}
+                node=${selectedNode}
+                relationship=${selectedRelationship}
+                neighbors=${neighbors}
+                graphNodes=${filteredGraph.nodes}
+                graphRelationships=${filteredGraph.relationships}
+                onSelectNode=${handleSelectNode}
+                onSelectMember=${handleSelectMember}
+                onClose=${() => setIsDetailsOpen(false)}
+                locale=${locale}
+                t=${t}
+              />`
+            : null}
         </div>
 
         <${ImportDialog}
