@@ -1408,7 +1408,7 @@
 
         <div className="content">
           <div className="theme-radar" aria-hidden="true"></div>
-          <div className="theme-web" aria-hidden="true"></div>
+          <div className="theme-mark" aria-hidden="true"></div>
           ${isSidebarOpen
             ? html`<${Sidebar}
                 filters=${filters}

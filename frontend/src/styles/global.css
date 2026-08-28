@@ -162,36 +162,17 @@ button, input, textarea {
   animation: city-drift 24s ease-in-out infinite alternate;
 }
 
-.theme-web {
+.theme-mark {
   position: absolute;
+  left: 20px;
+  top: 18px;
+  z-index: 3;
+  width: 180px;
+  height: 34px;
+  background: url('/assets/spider-theme/tracker_logo3.png') center / contain no-repeat;
+  opacity: 0.24;
+  filter: saturate(1.06) contrast(1.08);
   pointer-events: none;
-}
-
-.theme-radar {
-  position: absolute;
-  left: 24px;
-  bottom: 20px;
-  width: 150px;
-  aspect-ratio: 1;
-  background: url('/assets/spider-theme/radar.png') center / contain no-repeat;
-  opacity: 0.22;
-  filter: drop-shadow(0 0 10px rgba(150, 224, 247, 0.65));
-  animation: radar-spin 18s linear infinite;
-}
-
-.theme-web {
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 4;
-  width: 100%;
-  height: 92px;
-  background:
-    linear-gradient(180deg, rgba(4, 10, 17, 0), rgba(4, 10, 17, 0.35)),
-    url('/assets/spider-theme/spider-web-strip.png') 0 center / auto 88px repeat-x;
-  opacity: 0.08;
-  animation: web-drift 18s linear infinite;
-  mix-blend-mode: screen;
 }
 
 @keyframes city-drift {
@@ -202,11 +183,6 @@ button, input, textarea {
 @keyframes radar-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-@keyframes web-drift {
-  from { background-position: 0 center; }
-  to { background-position: -920px center; }
 }
 
 .sidebar,
@@ -710,7 +686,7 @@ svg text {
 @media (prefers-reduced-motion: reduce) {
   .content::before,
   .theme-radar,
-  .theme-web {
+  .theme-mark {
     animation: none;
   }
 
