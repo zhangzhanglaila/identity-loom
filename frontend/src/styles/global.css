@@ -53,35 +53,12 @@ button, input, textarea {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
 }
 
-.toolbar::after {
-  content: '';
-  position: absolute;
-  right: 18px;
-  bottom: -11px;
-  width: min(320px, 34vw);
-  height: 20px;
-  background: url('/assets/spider-theme/spidey-head-strip.png') right center / auto 20px repeat-x;
-  opacity: 0.3;
-  pointer-events: none;
-}
-
 .toolbar__brand {
   font-weight: 700;
   letter-spacing: 3px;
   white-space: nowrap;
   color: #ffffff;
   text-shadow: var(--glow);
-}
-
-.toolbar__brand::before {
-  content: '';
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  margin-right: 9px;
-  vertical-align: -4px;
-  background: url('/assets/spider-theme/spidey-head-strip.png') left center / auto 18px no-repeat;
-  image-rendering: pixelated;
 }
 
 .toolbar__search {
@@ -150,38 +127,66 @@ button, input, textarea {
   overflow: hidden;
 }
 
-.theme-art,
+.content::before {
+  content: '';
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/assets/spider-theme/map-bg.jpg') center / cover no-repeat;
+  opacity: 0.3;
+  filter: saturate(1.12) contrast(1.05);
+  animation: city-drift 24s ease-in-out infinite alternate;
+}
+
 .theme-web {
   position: absolute;
   pointer-events: none;
 }
 
-.theme-art {
-  right: -38px;
-  bottom: -18px;
-  z-index: 1;
-  width: min(520px, 42vw);
-  aspect-ratio: 1200 / 630;
-  background:
-    linear-gradient(90deg, rgba(5, 13, 24, 0.96) 0%, rgba(5, 13, 24, 0.34) 38%, rgba(5, 13, 24, 0.12) 100%),
-    url('/assets/spider-theme/share-image.jpg') center / cover no-repeat;
-  border-left: 1px solid rgba(150, 224, 247, 0.26);
-  opacity: 0.48;
-  filter: saturate(0.88) contrast(1.06);
-  clip-path: polygon(16% 0, 100% 0, 100% 84%, 84% 100%, 0 100%, 8% 58%);
-  mix-blend-mode: screen;
+.theme-radar {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  width: 150px;
+  aspect-ratio: 1;
+  background: url('/assets/spider-theme/radar.png') center / contain no-repeat;
+  opacity: 0.22;
+  filter: drop-shadow(0 0 10px rgba(150, 224, 247, 0.65));
+  animation: radar-spin 18s linear infinite;
 }
 
 .theme-web {
-  left: -70px;
-  bottom: -76px;
-  z-index: 1;
-  width: 330px;
-  height: 330px;
-  background: url('/assets/spider-theme/spider-web-strip.png') center / contain no-repeat;
-  opacity: 0.13;
-  transform: rotate(-18deg);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 100%;
+  height: 96px;
+  background: url('/assets/spider-theme/spider-web-strip.png') 0 center / auto 92px repeat-x;
+  opacity: 0.14;
+  animation: web-drift 18s linear infinite;
   mix-blend-mode: screen;
+}
+
+@keyframes city-drift {
+  from { transform: scale(1.02) translate3d(-1%, -0.5%, 0); }
+  to { transform: scale(1.08) translate3d(1%, 0.5%, 0); }
+}
+
+@keyframes swing-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(-10px, -8px, 0) rotate(-1deg); }
+}
+
+@keyframes radar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes web-drift {
+  from { background-position: 0 center; }
+  to { background-position: -920px center; }
 }
 
 .sidebar,
@@ -617,5 +622,13 @@ svg text {
     top: 8px;
     bottom: 8px;
     width: min(340px, calc(100vw - 16px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content::before,
+  .theme-radar,
+  .theme-web {
+    animation: none;
   }
 }

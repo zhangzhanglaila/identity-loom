@@ -1407,7 +1407,7 @@
         />
 
         <div className="content">
-          <div className="theme-art" aria-hidden="true"></div>
+          <div className="theme-radar" aria-hidden="true"></div>
           <div className="theme-web" aria-hidden="true"></div>
           ${isSidebarOpen
             ? html`<${Sidebar}
