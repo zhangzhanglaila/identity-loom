@@ -225,6 +225,14 @@
     return String(value);
   }
 
+  function renderNodeIcon(node, className) {
+    const iconUrl = iconUrlForNode(node);
+    if (iconUrl) {
+      return html`<img className=${className} src=${iconUrl} alt="" aria-hidden="true" referrerPolicy="no-referrer" />`;
+    }
+    return html`<span className=${className + ' is-fallback'} aria-hidden="true">${initialsForNode(node)}</span>`;
+  }
+
   const kindColors = {
     you: '#ff5c7a',
     provider: '#1f2937',
@@ -563,7 +571,10 @@
                   : linkedConnectionsForAccount(item.id);
                 return html`
                   <button key=${item.id} type="button" className=${'list-view__row ' + (selected ? 'is-selected' : '')} onClick=${() => onSelectNode(item)}>
-                    <div className="list-view__name">${item.display_name || item.name || item.id}</div>
+                    <div className="list-view__name">
+                      ${renderNodeIcon(item, 'list-view__icon')}
+                      <span className="list-view__name-text">${item.display_name || item.name || item.id}</span>
+                    </div>
                     <div className="list-view__kind">${getKindLabel(locale, item.kind)}</div>
                     <div className="list-view__links">${links.length}</div>
                   </button>
@@ -639,9 +650,12 @@
     const t = props.t;
     const onClose = props.onClose;
 
-    const panelHeading = (title) => html`
+    const panelHeading = (title, iconNode) => html`
       <div className="panel__heading">
-        <div className="panel__title">${title}</div>
+        <div className="panel__heading-left">
+          ${iconNode ? renderNodeIcon(iconNode, 'panel__icon') : null}
+          <div className="panel__title">${title}</div>
+        </div>
         <button className="panel__close" onClick=${onClose} title=${t('closePanel')} aria-label=${t('closePanel')}>×</button>
       </div>
     `;
@@ -690,7 +704,7 @@
       return html`
         <aside className="detail-panel">
           <div className="panel">
-            ${panelHeading(title)}
+            ${panelHeading(title, node)}
             <div className="detail-list">
               <div className="detail-row">
                 <span className="detail-row__key">${t('accounts')}</span>
@@ -707,7 +721,10 @@
                   ${members.map((member) => html`
                     <button key=${member.id} type="button" className="connection-row" onClick=${() => onSelectMember && onSelectMember(member)}>
                       <span className="connection-row__label">${nodeLabel(member)}</span>
-                      <span className="connection-row__name">${member.id}</span>
+                      <span className="connection-row__name">
+                        ${renderNodeIcon(member, 'connection-row__icon')}
+                        <span className="connection-row__text">${member.id}</span>
+                      </span>
                     </button>
                   `)}
                 </div>`}
@@ -721,7 +738,10 @@
                   ${connections.map((item) => html`
                     <button key=${item.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(item.other)}>
                       <span className="connection-row__label">${formatRelationLabel(locale, item.rel)}</span>
-                      <span className="connection-row__name">${item.other.display_name || item.other.name || item.other.id}</span>
+                      <span className="connection-row__name">
+                        ${renderNodeIcon(item.other, 'connection-row__icon')}
+                        <span className="connection-row__text">${item.other.display_name || item.other.name || item.other.id}</span>
+                      </span>
                     </button>
                   `)}
                 </div>`}
@@ -742,7 +762,7 @@
     return html`
       <aside className="detail-panel">
         <div className="panel">
-          ${panelHeading(title)}
+          ${panelHeading(title, node)}
           <div className="detail-list">
               ${detailEntries(node, locale).map(([key, value]) => html`
                 <div className="detail-row" key=${key}>
@@ -761,7 +781,10 @@
                 ${connections.map((c) => html`
                   <button key=${c.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(c.other)}>
                     <span className="connection-row__label">${formatRelationLabel(locale, c.rel)}</span>
-                    <span className="connection-row__name">${nodeLabel(c.other)}</span>
+                    <span className="connection-row__name">
+                      ${renderNodeIcon(c.other, 'connection-row__icon')}
+                      <span className="connection-row__text">${nodeLabel(c.other)}</span>
+                    </span>
                   </button>
                 `)}
               </div>`}
@@ -1408,7 +1431,6 @@
 
         <div className="content">
           <div className="theme-radar" aria-hidden="true"></div>
-          <div className="theme-mark" aria-hidden="true"></div>
           ${isSidebarOpen
             ? html`<${Sidebar}
                 filters=${filters}
