@@ -41,19 +41,31 @@ button, input, textarea {
 }
 
 .toolbar {
+  --spidey-frame: 14px;
   height: 60px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 14px;
+  padding: 10px 14px;
   position: relative;
   z-index: 40;
-  border-bottom: 1px solid rgba(150, 224, 247, 0.46);
-  background: rgba(4, 9, 16, 0.94);
+  border: 0;
+  overflow: hidden;
+  background:
+    url('/assets/spider-theme/frame1-1.png') left top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame1-2.png') center top / calc(100% - (var(--spidey-frame) * 2)) var(--spidey-frame) repeat-x,
+    url('/assets/spider-theme/frame1-3.png') right top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame3-1.png') left bottom / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame3-2.png') center bottom / calc(100% - (var(--spidey-frame) * 2)) var(--spidey-frame) repeat-x,
+    url('/assets/spider-theme/frame3-3.png') right bottom / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    linear-gradient(180deg, rgba(7, 16, 29, 0.98), rgba(4, 9, 16, 0.96));
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
 }
 
 .toolbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-weight: 700;
   letter-spacing: 3px;
   white-space: nowrap;
@@ -61,11 +73,20 @@ button, input, textarea {
   text-shadow: var(--glow);
 }
 
+.toolbar__brand::before {
+  content: '';
+  width: 94px;
+  height: 16px;
+  background: url('/assets/spider-theme/tracker_logo3.png') center / contain no-repeat;
+  image-rendering: pixelated;
+  filter: saturate(1.08) contrast(1.08);
+}
+
 .toolbar__search {
   flex: 1;
   min-width: 160px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 10px 12px;
   background: var(--panel-2);
   color: var(--text);
@@ -86,7 +107,7 @@ button, input, textarea {
 
 .toolbar__button {
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 10px 12px;
   background: rgba(9, 22, 35, 0.88);
   color: var(--text);
@@ -133,9 +154,11 @@ button, input, textarea {
   inset: -4%;
   z-index: 0;
   pointer-events: none;
-  background: url('/assets/spider-theme/map-bg.jpg') center / cover no-repeat;
-  opacity: 0.3;
-  filter: saturate(1.12) contrast(1.05);
+  background:
+    radial-gradient(circle at center, rgba(4, 10, 17, 0.08) 0%, rgba(4, 10, 17, 0.78) 68%, rgba(4, 10, 17, 0.96) 100%),
+    url('/assets/spider-theme/map-bg.jpg') center / cover no-repeat;
+  opacity: 0.55;
+  filter: saturate(1.08) contrast(1.04);
   animation: city-drift 24s ease-in-out infinite alternate;
 }
 
@@ -162,9 +185,11 @@ button, input, textarea {
   bottom: 0;
   z-index: 4;
   width: 100%;
-  height: 96px;
-  background: url('/assets/spider-theme/spider-web-strip.png') 0 center / auto 92px repeat-x;
-  opacity: 0.14;
+  height: 92px;
+  background:
+    linear-gradient(180deg, rgba(4, 10, 17, 0), rgba(4, 10, 17, 0.35)),
+    url('/assets/spider-theme/spider-web-strip.png') 0 center / auto 88px repeat-x;
+  opacity: 0.08;
   animation: web-drift 18s linear infinite;
   mix-blend-mode: screen;
 }
@@ -172,11 +197,6 @@ button, input, textarea {
 @keyframes city-drift {
   from { transform: scale(1.02) translate3d(-1%, -0.5%, 0); }
   to { transform: scale(1.08) translate3d(1%, 0.5%, 0); }
-}
-
-@keyframes swing-float {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50% { transform: translate3d(-10px, -8px, 0) rotate(-1deg); }
 }
 
 @keyframes radar-spin {
@@ -191,14 +211,25 @@ button, input, textarea {
 
 .sidebar,
 .detail-panel {
+  --spidey-frame: 18px;
   position: absolute;
   top: 12px;
   bottom: 12px;
   z-index: 30;
   min-width: 0;
-  padding: 14px;
-  background: rgba(4, 10, 17, 0.88);
-  border-right: 1px solid var(--line);
+  padding: calc(var(--spidey-frame) + 8px) 14px 14px;
+  border: 0;
+  overflow: hidden;
+  background:
+    url('/assets/spider-theme/frame1-1.png') left top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame1-2.png') center top / calc(100% - (var(--spidey-frame) * 2)) var(--spidey-frame) repeat-x,
+    url('/assets/spider-theme/frame1-3.png') right top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame2-1.png') left center / var(--spidey-frame) calc(100% - (var(--spidey-frame) * 2)) repeat-y,
+    url('/assets/spider-theme/frame2-3.png') right center / var(--spidey-frame) calc(100% - (var(--spidey-frame) * 2)) repeat-y,
+    url('/assets/spider-theme/frame3-1.png') left bottom / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame3-2.png') center bottom / calc(100% - (var(--spidey-frame) * 2)) var(--spidey-frame) repeat-x,
+    url('/assets/spider-theme/frame3-3.png') right bottom / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    linear-gradient(180deg, rgba(6, 14, 24, 0.96), rgba(4, 10, 17, 0.94));
   backdrop-filter: blur(18px);
 }
 
@@ -210,8 +241,6 @@ button, input, textarea {
 .detail-panel {
   right: 12px;
   width: min(360px, calc(100vw - 24px));
-  border-right: 0;
-  border-left: 1px solid var(--line);
 }
 
 .graph-area {
@@ -220,9 +249,39 @@ button, input, textarea {
   min-width: 0;
   min-height: 0;
   z-index: 2;
+  overflow: hidden;
   background:
-    radial-gradient(circle at center, rgba(4, 10, 17, 0.02) 0%, rgba(4, 10, 17, 0.58) 100%),
+    radial-gradient(circle at center, rgba(4, 10, 17, 0.02) 0%, rgba(4, 10, 17, 0.62) 100%),
     linear-gradient(180deg, rgba(4, 10, 17, 0.14), rgba(4, 10, 17, 0.28));
+}
+
+.graph-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    url('/assets/spider-theme/grid-lines.png') center / cover no-repeat,
+    radial-gradient(circle at center, rgba(255, 92, 85, 0.05) 0, rgba(255, 92, 85, 0) 48%);
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  animation: grid-drift 36s linear infinite;
+}
+
+.graph-area::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(150, 224, 247, 0.04), transparent 24%, transparent 76%, rgba(255, 92, 85, 0.04));
+}
+
+.graph-canvas-wrap,
+.graph-status {
+  position: relative;
+  z-index: 1;
 }
 
 .graph-status {
@@ -271,11 +330,17 @@ button, input, textarea {
 }
 
 .panel {
+  --spidey-frame: 12px;
   padding: 12px;
   margin-bottom: 14px;
-  background: rgba(7, 15, 24, 0.92);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background:
+    url('/assets/spider-theme/frame4-1.png') left top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame4-2.png') center top / calc(100% - (var(--spidey-frame) * 2)) calc(100% - (var(--spidey-frame) * 2)) no-repeat,
+    url('/assets/spider-theme/frame4-3.png') right top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    linear-gradient(180deg, rgba(7, 15, 24, 0.96), rgba(4, 10, 17, 0.94));
   box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.04), 0 0 10px rgba(0, 0, 0, 0.22);
 }
 
@@ -298,7 +363,7 @@ button, input, textarea {
 
 .panel__close {
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.24);
   color: var(--text);
   width: 28px;
@@ -326,7 +391,7 @@ button, input, textarea {
 .stat {
   padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.25);
 }
 
@@ -382,10 +447,16 @@ button, input, textarea {
 
 .modal {
   width: min(720px, calc(100vw - 32px));
-  background: rgba(7, 15, 24, 0.98);
-  border: 1px solid var(--line-bright);
-  border-radius: 6px;
-  padding: 14px;
+  --spidey-frame: 16px;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  padding: calc(var(--spidey-frame) + 8px) 14px 14px;
+  background:
+    url('/assets/spider-theme/frame5-1.png') left top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    url('/assets/spider-theme/frame5-2.png') center top / calc(100% - (var(--spidey-frame) * 2)) var(--spidey-frame) repeat-x,
+    url('/assets/spider-theme/frame5-3.png') right top / var(--spidey-frame) var(--spidey-frame) no-repeat,
+    linear-gradient(180deg, rgba(7, 15, 24, 0.98), rgba(4, 10, 17, 0.98));
   box-shadow: var(--glow-strong);
 }
 
@@ -417,7 +488,7 @@ button, input, textarea {
 
 .mode-switch__button {
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 8px 12px;
   background: #0c1c38;
   color: var(--text);
@@ -444,7 +515,7 @@ button, input, textarea {
   text-align: left;
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.25);
   color: var(--text);
   cursor: pointer;
@@ -474,7 +545,8 @@ button, input, textarea {
   padding: 24px;
   background:
     linear-gradient(180deg, rgba(3, 11, 28, 0.25), rgba(3, 11, 28, 0.75)),
-    radial-gradient(circle at center, rgba(150, 224, 247, 0.08), transparent 60%);
+    radial-gradient(circle at center, rgba(150, 224, 247, 0.08), transparent 60%),
+    url('/assets/spider-theme/grid-lines.png') center / cover no-repeat;
 }
 
 .list-view__tabs {
@@ -483,13 +555,13 @@ button, input, textarea {
   padding: 4px;
   margin-bottom: 18px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.25);
 }
 
 .list-view__tab {
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   padding: 9px 14px;
   background: transparent;
   color: var(--muted);
@@ -536,7 +608,7 @@ button, input, textarea {
   min-height: 54px;
   padding: 12px;
   border: 1px solid rgba(150, 224, 247, 0.12);
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(4, 13, 31, 0.72);
   color: var(--text);
   text-align: left;
@@ -591,6 +663,11 @@ svg text {
   filter: drop-shadow(0 0 8px rgba(0, 255, 80, 0.6));
 }
 
+@keyframes grid-drift {
+  from { background-position: center 0, center center; }
+  to { background-position: center 240px, center center; }
+}
+
 @media (max-width: 900px) {
   .toolbar {
     height: auto;
@@ -601,6 +678,11 @@ svg text {
 
   .toolbar__brand {
     flex: 1 0 auto;
+  }
+
+  .toolbar__brand::before {
+    width: 78px;
+    height: 14px;
   }
 
   .toolbar__search {
@@ -629,6 +711,10 @@ svg text {
   .content::before,
   .theme-radar,
   .theme-web {
+    animation: none;
+  }
+
+  .graph-area::before {
     animation: none;
   }
 }
