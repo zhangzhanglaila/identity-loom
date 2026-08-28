@@ -952,7 +952,7 @@
       const render = () => {
         ctx.save();
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = '#081018';
+        ctx.fillStyle = 'rgba(5, 11, 20, 0.68)';
         ctx.fillRect(0, 0, width, height);
 
         ctx.translate(transform.x, transform.y);
@@ -1407,6 +1407,8 @@
         />
 
         <div className="content">
+          <div className="theme-art" aria-hidden="true"></div>
+          <div className="theme-web" aria-hidden="true"></div>
           ${isSidebarOpen
             ? html`<${Sidebar}
                 filters=${filters}

@@ -1,19 +1,19 @@
 :root {
   color-scheme: dark;
-  --bg: #030b1c;
-  --bg-2: #0a1630;
-  --panel: #0e1c3b;
-  --panel-2: #081528;
-  --line: #1e3a5f;
-  --line-bright: #2f5a8a;
-  --text: #eaf6ff;
-  --muted: #7fa8c9;
+  --bg: #050d18;
+  --bg-2: #071a31;
+  --panel: #0a111b;
+  --panel-2: #07101b;
+  --line: rgba(150, 224, 247, 0.35);
+  --line-bright: #96e0f7;
+  --text: #edf9ff;
+  --muted: #8aabbc;
   --accent: #96e0f7;
-  --accent-2: #00ff50;
-  --accent-3: #a8e1fe;
-  --danger: #ff5c7a;
-  --glow: 0 0 8px rgba(150, 224, 247, 0.35);
-  --glow-strong: 0 0 14px rgba(150, 224, 247, 0.55);
+  --accent-2: #ff5c55;
+  --accent-3: #d7f5ff;
+  --danger: #ff716c;
+  --glow: 0 0 8px rgba(150, 224, 247, 0.3);
+  --glow-strong: 0 0 16px rgba(150, 224, 247, 0.42);
 }
 
 * {
@@ -24,11 +24,7 @@ html, body, #root {
   width: 100%;
   height: 100%;
   margin: 0;
-  background:
-    linear-gradient(90deg, rgba(150, 224, 247, 0.04) 1px, transparent 1px),
-    linear-gradient(rgba(150, 224, 247, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, #0e2a5c 0%, #061026 55%, #030b1c 100%);
-  background-size: 32px 32px, 32px 32px, 100% 100%;
+  background: #050d18 url('/assets/spider-theme/map-bg.jpg') center / cover fixed no-repeat;
   color: var(--text);
   font-family: 'Cascadia Code', 'Consolas', 'Lucida Console', 'Courier New', monospace;
 }
@@ -50,17 +46,42 @@ button, input, textarea {
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(6, 16, 36, 0.92);
-  box-shadow: 0 1px 12px rgba(150, 224, 247, 0.08);
+  position: relative;
+  z-index: 40;
+  border-bottom: 1px solid rgba(150, 224, 247, 0.46);
+  background: rgba(4, 9, 16, 0.94);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
+}
+
+.toolbar::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: -11px;
+  width: min(320px, 34vw);
+  height: 20px;
+  background: url('/assets/spider-theme/spidey-head-strip.png') right center / auto 20px repeat-x;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .toolbar__brand {
   font-weight: 700;
   letter-spacing: 3px;
   white-space: nowrap;
-  color: var(--accent);
+  color: #ffffff;
   text-shadow: var(--glow);
+}
+
+.toolbar__brand::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 9px;
+  vertical-align: -4px;
+  background: url('/assets/spider-theme/spidey-head-strip.png') left center / auto 18px no-repeat;
+  image-rendering: pixelated;
 }
 
 .toolbar__search {
@@ -90,7 +111,7 @@ button, input, textarea {
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 10px 12px;
-  background: #0c1c38;
+  background: rgba(9, 22, 35, 0.88);
   color: var(--text);
   cursor: pointer;
   letter-spacing: 1px;
@@ -125,6 +146,42 @@ button, input, textarea {
   min-height: 0;
   position: relative;
   display: flex;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.theme-art,
+.theme-web {
+  position: absolute;
+  pointer-events: none;
+}
+
+.theme-art {
+  right: -38px;
+  bottom: -18px;
+  z-index: 1;
+  width: min(520px, 42vw);
+  aspect-ratio: 1200 / 630;
+  background:
+    linear-gradient(90deg, rgba(5, 13, 24, 0.96) 0%, rgba(5, 13, 24, 0.34) 38%, rgba(5, 13, 24, 0.12) 100%),
+    url('/assets/spider-theme/share-image.jpg') center / cover no-repeat;
+  border-left: 1px solid rgba(150, 224, 247, 0.26);
+  opacity: 0.48;
+  filter: saturate(0.88) contrast(1.06);
+  clip-path: polygon(16% 0, 100% 0, 100% 84%, 84% 100%, 0 100%, 8% 58%);
+  mix-blend-mode: screen;
+}
+
+.theme-web {
+  left: -70px;
+  bottom: -76px;
+  z-index: 1;
+  width: 330px;
+  height: 330px;
+  background: url('/assets/spider-theme/spider-web-strip.png') center / contain no-repeat;
+  opacity: 0.13;
+  transform: rotate(-18deg);
+  mix-blend-mode: screen;
 }
 
 .sidebar,
@@ -135,7 +192,7 @@ button, input, textarea {
   z-index: 30;
   min-width: 0;
   padding: 14px;
-  background: rgba(5, 13, 30, 0.72);
+  background: rgba(4, 10, 17, 0.88);
   border-right: 1px solid var(--line);
   backdrop-filter: blur(18px);
 }
@@ -157,10 +214,10 @@ button, input, textarea {
   position: relative;
   min-width: 0;
   min-height: 0;
+  z-index: 2;
   background:
-    radial-gradient(circle at center, rgba(3, 11, 28, 0) 0%, rgba(3, 11, 28, 0.55) 100%),
-    repeating-radial-gradient(circle at center, rgba(150, 224, 247, 0.05) 0 1px, transparent 1px 110px),
-    conic-gradient(from 0deg, rgba(150, 224, 247, 0.04) 0 1deg, transparent 1deg 30deg);
+    radial-gradient(circle at center, rgba(4, 10, 17, 0.02) 0%, rgba(4, 10, 17, 0.58) 100%),
+    linear-gradient(180deg, rgba(4, 10, 17, 0.14), rgba(4, 10, 17, 0.28));
 }
 
 .graph-status {
@@ -211,10 +268,10 @@ button, input, textarea {
 .panel {
   padding: 12px;
   margin-bottom: 14px;
-  background: linear-gradient(180deg, rgba(14, 28, 59, 0.95), rgba(8, 17, 38, 0.95));
+  background: rgba(7, 15, 24, 0.92);
   border: 1px solid var(--line);
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.03), 0 0 10px rgba(150, 224, 247, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.04), 0 0 10px rgba(0, 0, 0, 0.22);
 }
 
 .panel__heading {
@@ -320,7 +377,7 @@ button, input, textarea {
 
 .modal {
   width: min(720px, calc(100vw - 32px));
-  background: var(--panel);
+  background: rgba(7, 15, 24, 0.98);
   border: 1px solid var(--line-bright);
   border-radius: 6px;
   padding: 14px;
