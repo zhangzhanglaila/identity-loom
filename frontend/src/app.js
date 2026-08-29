@@ -668,7 +668,7 @@
     if (!node && !relationship) {
       return html`
         <aside className="detail-panel">
-          <div className="panel">
+          <div className="detail-card">
             ${panelHeading(t('details'))}
             <div className="panel__empty">${t('selectNodeOrEdge')}</div>
           </div>
@@ -680,7 +680,7 @@
       const title = t('edgePrefix') + formatRelationLabel(locale, relationship);
       return html`
         <aside className="detail-panel">
-          <div className="panel">
+          <div className="detail-card">
             ${panelHeading(title)}
             <div className="detail-list">
               ${relationshipEntries(relationship, locale).map(([key, value]) => html`
@@ -708,7 +708,7 @@
         .filter((item) => item.other);
       return html`
         <aside className="detail-panel">
-          <div className="panel">
+          <div className="detail-card">
             ${panelHeading(title, node)}
             <div className="detail-list">
               <div className="detail-row">
@@ -718,8 +718,8 @@
             </div>
           </div>
 
-          <div className="panel">
-          <div className="panel__title">${t('accounts')}</div>
+          <div className="detail-card">
+            <div className="panel__title">${t('accounts')}</div>
             ${members.length === 0
               ? html`<div className="panel__empty">${t('noItems')}</div>`
               : html`<div className="connection-list">
@@ -735,7 +735,7 @@
                 </div>`}
           </div>
 
-          <div className="panel">
+          <div className="detail-card">
             <div className="panel__title">${t('connections')}</div>
             ${connections.length === 0
               ? html`<div className="panel__empty">${t('noConnections')}</div>`
@@ -766,7 +766,7 @@
 
     return html`
       <aside className="detail-panel">
-        <div className="panel">
+        <div className="detail-card">
           ${panelHeading(title, node)}
           <div className="detail-list">
               ${detailEntries(node, locale).map(([key, value]) => html`
@@ -778,7 +778,7 @@
           </div>
         </div>
 
-        <div className="panel">
+        <div className="detail-card">
           <div className="panel__title">${t('connections')}</div>
           ${connections.length === 0
             ? html`<div className="panel__empty">${t('noConnections')}</div>`

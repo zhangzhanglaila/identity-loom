@@ -295,15 +295,17 @@ button, input, textarea {
   box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.04), 0 0 10px rgba(0, 0, 0, 0.22);
 }
 
-.detail-panel .panel {
-  background: #ffffff;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-  border: 1px solid #eeeeee;
-}
-
 .detail-panel {
   background: #f5f7fa;
   box-shadow: none;
+}
+
+.detail-card {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #eeeeee;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 .detail-panel .panel__title,
@@ -327,6 +329,11 @@ button, input, textarea {
   background: #ffffff;
   border-color: #eeeeee;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.detail-card .panel__title {
+  color: #333333;
+  text-shadow: none;
 }
 
 .detail-panel .connection-row:hover {
