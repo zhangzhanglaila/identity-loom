@@ -243,7 +243,7 @@
     tag: '#f89d51'
   };
 
-  const spideySpriteUrl = '/assets/spider-theme/spidey-head-spritesheet.png';
+  const spideyAvatarUrl = '/assets/spider-theme/spidey-x-avatar.jpg';
 
   const platformIcons = {
     apple: 'https://cdn.simpleicons.org/apple/ffffff',
@@ -292,7 +292,7 @@
 
   function iconUrlForNode(node) {
     if (!node) return null;
-    if (node.kind === 'you') return spideySpriteUrl;
+    if (node.kind === 'you') return spideyAvatarUrl;
     if (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account') return null;
     const key = normalizeIconKey(node.platform || node.name);
     return platformIcons[key] || null;
@@ -719,7 +719,7 @@
           </div>
 
           <div className="panel">
-            <div className="panel__title">${t('accounts')}</div>
+          <div className="panel__title">${t('accounts')}</div>
             ${members.length === 0
               ? html`<div className="panel__empty">${t('noItems')}</div>`
               : html`<div className="connection-list">
@@ -1046,13 +1046,8 @@
           const iconUrl = iconUrlForNode(node);
           const icon = iconUrl ? iconCache.get(iconUrl) : null;
           if (icon && icon.loaded && !icon.failed) {
-            const size = node.kind === 'you' ? r * 1.42 : r * 1.18;
-            if (iconUrl === spideySpriteUrl) {
-              const sourceSize = Math.min(icon.image.width, icon.image.height);
-              ctx.drawImage(icon.image, 0, 0, sourceSize, sourceSize, x - size / 2, y - size / 2, size, size);
-            } else {
-              ctx.drawImage(icon.image, x - size / 2, y - size / 2, size, size);
-            }
+            const size = node.kind === 'you' ? r * 1.28 : r * 1.18;
+            ctx.drawImage(icon.image, x - size / 2, y - size / 2, size, size);
           } else if (hasIcon || node.kind === 'provider' || node.kind === 'platform') {
             ctx.fillStyle = '#d7ecff';
             ctx.font = '800 10px Inter, sans-serif';

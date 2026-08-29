@@ -321,6 +321,9 @@ button, input, textarea {
 }
 
 .detail-panel .connection-row {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
   background: #ffffff;
   border-color: #eeeeee;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
@@ -531,13 +534,12 @@ button, input, textarea {
 }
 
 .connection-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
+  padding: 12px 12px 11px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0;
   background: rgba(0, 0, 0, 0.18);
@@ -562,16 +564,17 @@ button, input, textarea {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
 }
 
 .connection-row__text {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  color: #333333;
 }
 
 .connection-row__icon {
