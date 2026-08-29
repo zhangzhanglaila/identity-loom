@@ -501,20 +501,21 @@ button, input, textarea {
   width: 100%;
   text-align: left;
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.18);
   color: var(--text);
   cursor: pointer;
 }
 
 .connection-row:hover {
-  border-color: var(--accent);
-  box-shadow: var(--glow);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
 }
 
 .connection-row__label {
-  color: var(--accent);
+  color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -621,9 +622,9 @@ button, input, textarea {
   width: 100%;
   min-height: 54px;
   padding: 12px;
-  border: 1px solid rgba(150, 224, 247, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0;
-  background: rgba(4, 13, 31, 0.72);
+  background: rgba(0, 0, 0, 0.16);
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -631,8 +632,9 @@ button, input, textarea {
 
 .list-view__row:hover,
 .list-view__row.is-selected {
-  border-color: var(--accent);
-  box-shadow: var(--glow);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
 }
 
 .list-view__name {
@@ -672,7 +674,7 @@ button, input, textarea {
 }
 
 .list-view__links {
-  color: var(--accent);
+  color: var(--muted);
   font-weight: 700;
 }
 
