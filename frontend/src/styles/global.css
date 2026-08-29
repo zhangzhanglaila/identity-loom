@@ -314,9 +314,17 @@ button, input, textarea {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  border: 1px solid rgba(150, 224, 247, 0.24);
-  background: rgba(0, 0, 0, 0.3);
+  border: 0;
+  background: transparent;
   object-fit: contain;
+}
+
+.panel__icon.is-spidey,
+.connection-row__icon.is-spidey,
+.list-view__icon.is-spidey {
+  object-fit: cover;
+  object-position: left center;
+  image-rendering: pixelated;
 }
 
 .panel__icon.is-fallback {
@@ -527,8 +535,8 @@ button, input, textarea {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
-  border: 1px solid rgba(150, 224, 247, 0.24);
-  background: rgba(0, 0, 0, 0.3);
+  border: 0;
+  background: transparent;
   object-fit: contain;
 }
 
@@ -640,8 +648,8 @@ button, input, textarea {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  border: 1px solid rgba(150, 224, 247, 0.24);
-  background: rgba(0, 0, 0, 0.3);
+  border: 0;
+  background: transparent;
   object-fit: contain;
 }
 

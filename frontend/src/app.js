@@ -228,7 +228,8 @@
   function renderNodeIcon(node, className) {
     const iconUrl = iconUrlForNode(node);
     if (iconUrl) {
-      return html`<img className=${className} src=${iconUrl} alt="" aria-hidden="true" referrerPolicy="no-referrer" />`;
+      const iconClassName = node?.kind === 'you' ? className + ' is-spidey' : className;
+      return html`<img className=${iconClassName} src=${iconUrl} alt="" aria-hidden="true" referrerPolicy="no-referrer" />`;
     }
     return html`<span className=${className + ' is-fallback'} aria-hidden="true">${initialsForNode(node)}</span>`;
   }
@@ -241,6 +242,8 @@
     identifier: '#1f2937',
     tag: '#f89d51'
   };
+
+  const spideySpriteUrl = '/assets/spider-theme/spidey-head-spritesheet.png';
 
   const platformIcons = {
     apple: 'https://cdn.simpleicons.org/apple/ffffff',
@@ -288,7 +291,9 @@
   }
 
   function iconUrlForNode(node) {
-    if (!node || (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account')) return null;
+    if (!node) return null;
+    if (node.kind === 'you') return spideySpriteUrl;
+    if (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account') return null;
     const key = normalizeIconKey(node.platform || node.name);
     return platformIcons[key] || null;
   }
@@ -1040,7 +1045,12 @@
           const icon = iconUrl ? iconCache.get(iconUrl) : null;
           if (icon && icon.loaded && !icon.failed) {
             const size = r * 1.18;
-            ctx.drawImage(icon.image, x - size / 2, y - size / 2, size, size);
+            if (iconUrl === spideySpriteUrl) {
+              const sourceSize = Math.min(icon.image.width, icon.image.height);
+              ctx.drawImage(icon.image, 0, 0, sourceSize, sourceSize, x - size / 2, y - size / 2, size, size);
+            } else {
+              ctx.drawImage(icon.image, x - size / 2, y - size / 2, size, size);
+            }
           } else if (hasIcon || node.kind === 'provider' || node.kind === 'platform') {
             ctx.fillStyle = '#d7ecff';
             ctx.font = '800 10px Inter, sans-serif';
