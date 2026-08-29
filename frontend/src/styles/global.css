@@ -295,6 +295,12 @@ button, input, textarea {
   box-shadow: inset 0 0 0 1px rgba(150, 224, 247, 0.04), 0 0 10px rgba(0, 0, 0, 0.22);
 }
 
+.detail-panel .panel {
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .panel__heading {
   display: flex;
   align-items: center;
