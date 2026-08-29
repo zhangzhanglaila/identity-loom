@@ -296,9 +296,40 @@ button, input, textarea {
 }
 
 .detail-panel .panel {
-  background: rgba(0, 0, 0, 0.18);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  border: 1px solid #eeeeee;
+}
+
+.detail-panel {
+  background: #f5f7fa;
   box-shadow: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detail-panel .panel__title,
+.detail-panel .panel__empty,
+.detail-panel .detail-row__key,
+.detail-panel .detail-row__value,
+.detail-panel .connection-row__label,
+.detail-panel .connection-row__name {
+  color: #333333;
+  text-shadow: none;
+}
+
+.detail-panel .detail-row {
+  border-bottom-color: #eeeeee;
+}
+
+.detail-panel .connection-row {
+  background: #ffffff;
+  border-color: #eeeeee;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.detail-panel .connection-row:hover {
+  border-color: #dddddd;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
 .panel__heading {
