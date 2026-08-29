@@ -327,6 +327,11 @@ button, input, textarea {
   image-rendering: pixelated;
 }
 
+.panel__icon.is-spidey {
+  width: 24px;
+  height: 24px;
+}
+
 .panel__icon.is-fallback {
   display: inline-grid;
   place-items: center;

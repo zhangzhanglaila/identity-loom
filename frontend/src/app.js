@@ -1011,7 +1011,7 @@
           const hasIcon = Boolean(iconUrlForNode(node));
           const r = node.kind === 'you' ? 27 : node.kind === 'account' ? 17 : node.kind === 'provider' || node.kind === 'identifier' || node.kind === 'platform' ? 22 : 13;
           const fill = node.kind === 'you'
-            ? '#ff5c7a'
+            ? '#050608'
             : node.kind === 'account'
               ? 'rgba(248, 250, 252, 0.85)'
               : '#0f172a';
@@ -1019,6 +1019,8 @@
             ? '#96e0f7'
             : node.kind === 'identifier'
               ? '#c792ea'
+              : node.kind === 'you'
+                ? '#ff5c55'
               : node.kind === 'account'
                 ? '#96e0f7'
                 : '#0a1630';
@@ -1044,7 +1046,7 @@
           const iconUrl = iconUrlForNode(node);
           const icon = iconUrl ? iconCache.get(iconUrl) : null;
           if (icon && icon.loaded && !icon.failed) {
-            const size = r * 1.18;
+            const size = node.kind === 'you' ? r * 1.42 : r * 1.18;
             if (iconUrl === spideySpriteUrl) {
               const sourceSize = Math.min(icon.image.width, icon.image.height);
               ctx.drawImage(icon.image, 0, 0, sourceSize, sourceSize, x - size / 2, y - size / 2, size, size);
@@ -1092,7 +1094,7 @@
           if (node) {
             ctx.save();
             ctx.font = '700 12px Inter, sans-serif';
-            ctx.fillStyle = '#96e0f7';
+            ctx.fillStyle = node.kind === 'you' ? '#ff5c55' : '#96e0f7';
             ctx.textAlign = 'left';
             ctx.fillText(node.kind.toUpperCase(), node.x + 20, node.y - 20);
             ctx.restore();
