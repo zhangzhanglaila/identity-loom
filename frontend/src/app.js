@@ -245,6 +245,10 @@
 
   const spideyAvatarUrl = '/assets/spider-theme/spidey-x-avatar.jpg';
 
+  function svgDataUrl(svg) {
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
   const platformIcons = {
     google: 'https://cdn.simpleicons.org/google/ffffff',
     '谷歌': 'https://cdn.simpleicons.org/google/ffffff',
@@ -283,6 +287,28 @@
     xiaomi: 'https://cdn.simpleicons.org/xiaomi/ffffff',
     baidu: 'https://cdn.simpleicons.org/baidu/ffffff',
     csdn: 'https://cdn.simpleicons.org/csdn/ffffff'
+  };
+
+  const localPlatformIcons = {
+    qq: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#12b7f5"/><circle cx="46" cy="52" r="14" fill="#ffffff"/><circle cx="82" cy="52" r="14" fill="#ffffff"/><ellipse cx="64" cy="79" rx="30" ry="12" fill="#ffffff"/><path d="M39 66c4-18 14-28 25-28s21 10 25 28" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>'),
+    tencentqq: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#12b7f5"/><circle cx="46" cy="52" r="14" fill="#ffffff"/><circle cx="82" cy="52" r="14" fill="#ffffff"/><ellipse cx="64" cy="79" rx="30" ry="12" fill="#ffffff"/><path d="M39 66c4-18 14-28 25-28s21 10 25 28" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>'),
+    microsoftoutlook: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#0f6cbd"/><rect x="22" y="30" width="84" height="68" rx="12" fill="#ffffff"/><path d="M28 42l36 24 36-24" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 86l28-20 8 6 36-26" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="92" cy="48" r="16" fill="#0f6cbd"/><text x="92" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">O</text></svg>'),
+    outlook: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#0f6cbd"/><rect x="22" y="30" width="84" height="68" rx="12" fill="#ffffff"/><path d="M28 42l36 24 36-24" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 86l28-20 8 6 36-26" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="92" cy="48" r="16" fill="#0f6cbd"/><text x="92" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">O</text></svg>')
+  };
+
+  const iconAliases = {
+    tencentqq: 'qq',
+    '腾讯qq': 'qq',
+    qqmail: 'qq',
+    'qq邮箱': 'qq',
+    qqmailcom: 'qq',
+    microsoftoutlook: 'outlook',
+    outlookmail: 'outlook',
+    outlookcom: 'outlook',
+    office365: 'outlook',
+    microsoft365: 'outlook',
+    hotmail: 'outlook',
+    live: 'outlook'
   };
 
   const platformDomains = {
@@ -441,12 +467,17 @@
       .replace(/[\s_./-]+/g, '');
   }
 
+  function resolvedIconKey(value) {
+    const key = normalizeIconKey(value);
+    return iconAliases[key] || key;
+  }
+
   function iconUrlForNode(node) {
     if (!node) return null;
     if (node.kind === 'you') return spideyAvatarUrl;
     if (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account') return null;
-    const key = normalizeIconKey(node.platform || node.name);
-    return platformIcons[key] || faviconUrlForDomain(platformDomains[key]) || null;
+    const key = resolvedIconKey(node.platform || node.name);
+    return platformIcons[key] || localPlatformIcons[key] || faviconUrlForDomain(platformDomains[key]) || null;
   }
 
   function initialsForNode(node) {
