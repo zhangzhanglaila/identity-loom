@@ -477,7 +477,7 @@
     if (node.kind === 'you') return spideyAvatarUrl;
     if (node.kind !== 'provider' && node.kind !== 'platform' && node.kind !== 'account') return null;
     const key = resolvedIconKey(node.platform || node.name);
-    return platformIcons[key] || localPlatformIcons[key] || faviconUrlForDomain(platformDomains[key]) || null;
+    return localPlatformIcons[key] || platformIcons[key] || faviconUrlForDomain(platformDomains[key]) || null;
   }
 
   function initialsForNode(node) {
