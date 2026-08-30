@@ -1410,9 +1410,18 @@
     const [importOpen, setImportOpen] = useState(false);
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
+    const loadRetryRef = useRef(null);
     const t = createT(locale);
 
-    const loadGraph = async () => {
+    const clearLoadRetry = () => {
+      if (loadRetryRef.current) {
+        window.clearTimeout(loadRetryRef.current);
+        loadRetryRef.current = null;
+      }
+    };
+
+    const loadGraph = async (attempt = 1) => {
+      clearLoadRetry();
       setDataState('loading');
       try {
         const data = await getOverview(1000);
@@ -1423,6 +1432,13 @@
         }
         throw new Error('Invalid graph response');
       } catch {
+        if (attempt < 10) {
+          setDataState('loading');
+          loadRetryRef.current = window.setTimeout(() => {
+            loadGraph(attempt + 1);
+          }, 1500);
+          return;
+        }
         setGraph({ nodes: [], relationships: [] });
         setDataState('error');
       }
@@ -1430,6 +1446,9 @@
 
     useEffect(() => {
       loadGraph();
+      return () => {
+        clearLoadRetry();
+      };
     }, []);
 
     const displayGraph = useMemo(() => (
