@@ -1046,6 +1046,8 @@
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const iconCacheRef = useRef(new Map());
+    const positionCacheRef = useRef(new Map());
+    const transformRef = useRef(d3.zoomIdentity);
 
     const processed = useMemo(() => {
       const map = new Map(nodes.map((node) => [node.id, { ...node }]));
@@ -1099,6 +1101,17 @@
       const activeNodeIds = focused ? new Set([focusNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
       const isActiveNode = (d) => !focused || (activeNodeIds && activeNodeIds.has(d.id));
       const isActiveLink = (d) => !focused || idOf(d.source) === focusNodeId || idOf(d.target) === focusNodeId;
+      const positionCache = positionCacheRef.current;
+
+      processed.nodes.forEach((node) => {
+        const cached = positionCache.get(node.id);
+        if (cached) {
+          node.x = cached.x;
+          node.y = cached.y;
+          node.vx = cached.vx;
+          node.vy = cached.vy;
+        }
+      });
 
       const simulation = d3.forceSimulation(processed.nodes)
         .force('link', d3.forceLink(processed.links).id((d) => d.id).distance(layoutMode === 'layered' ? 180 : 120))
@@ -1136,21 +1149,14 @@
 
       const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', (event) => {
         transform = event.transform;
+        transformRef.current = event.transform;
         render();
       });
-      let transform = d3.zoomIdentity;
+      let transform = transformRef.current || d3.zoomIdentity;
       d3.select(canvas).call(zoom);
-
-      const centerOnFocus = () => {
-        if (!focusNodeId) return;
-        const focusNode = processed.nodes.find((node) => node.id === focusNodeId);
-        if (!focusNode || !Number.isFinite(focusNode.x) || !Number.isFinite(focusNode.y)) return;
-        const scale = 1.35;
-        const nextTransform = d3.zoomIdentity
-          .translate(width / 2 - focusNode.x * scale, height / 2 - focusNode.y * scale)
-          .scale(scale);
-        d3.select(canvas).call(zoom.transform, nextTransform);
-      };
+      if (transformRef.current && (transformRef.current.x || transformRef.current.y || transformRef.current.k !== 1)) {
+        d3.select(canvas).call(zoom.transform, transformRef.current);
+      }
 
       const linked = new Map();
       processed.links.forEach((link) => {
@@ -1280,11 +1286,14 @@
         ctx.restore();
       };
 
-      const ticked = () => render();
+      const ticked = () => {
+        processed.nodes.forEach((node) => {
+          positionCache.set(node.id, { x: node.x, y: node.y, vx: node.vx, vy: node.vy });
+        });
+        render();
+      };
       simulation.on('tick', ticked);
-      simulation.on('end', centerOnFocus);
       render();
-      window.requestAnimationFrame(centerOnFocus);
 
       let dragNode = null;
       const findNode = (x, y) => {
@@ -1372,6 +1381,9 @@
           rootNode.fx = nextWidth / 2;
           rootNode.fy = nextHeight / 2;
         }
+        processed.nodes.forEach((node) => {
+          positionCache.set(node.id, { x: node.x, y: node.y, vx: node.vx, vy: node.vy });
+        });
         simulation.alpha(0.35).restart();
       });
       resizeObserver.observe(container);

@@ -108,6 +108,8 @@ export function GraphCanvas({
   onSelectRelationship
 }) {
   const svgRef = useRef(null);
+  const positionCacheRef = useRef(new Map());
+  const transformRef = useRef(d3.zoomIdentity);
 
   const processed = useMemo(() => {
     const map = new Map(nodes.map((node) => [node.id, { ...node }]));
@@ -134,11 +136,14 @@ export function GraphCanvas({
     const zoomLayer = svg.append('g').attr('class', 'zoom-layer');
     zoomLayer.append(() => root.node());
 
-    svg.call(
-      d3.zoom().scaleExtent([0.2, 2.5]).on('zoom', (event) => {
+    const zoom = d3.zoom().scaleExtent([0.2, 2.5]).on('zoom', (event) => {
         root.attr('transform', event.transform);
-      })
-    );
+        transformRef.current = event.transform;
+      });
+    svg.call(zoom);
+    if (transformRef.current && (transformRef.current.x || transformRef.current.y || transformRef.current.k !== 1)) {
+      svg.call(zoom.transform, transformRef.current);
+    }
 
     const simulation = d3.forceSimulation(processed.nodes)
       .force('link', d3.forceLink(processed.links).id((d) => d.id).distance(layoutMode === 'layered' ? 170 : 110))
@@ -185,6 +190,17 @@ export function GraphCanvas({
     const idOf = (x) => (x && typeof x === 'object' ? x.id : x);
     const isActiveNode = (d) => !focused || d.id === focusNodeId || (highlightIds && highlightIds.has(d.id));
     const isActiveLink = (d) => !focused || idOf(d.source) === focusNodeId || idOf(d.target) === focusNodeId;
+    const positionCache = positionCacheRef.current;
+
+    processed.nodes.forEach((node) => {
+      const cached = positionCache.get(node.id);
+      if (cached) {
+        node.x = cached.x;
+        node.y = cached.y;
+        node.vx = cached.vx;
+        node.vy = cached.vy;
+      }
+    });
 
     const link = linkGroup
       .selectAll('path')
@@ -264,6 +280,10 @@ export function GraphCanvas({
     const label = root.append('g').attr('class', 'labels');
 
     simulation.on('tick', () => {
+      processed.nodes.forEach((node) => {
+        positionCache.set(node.id, { x: node.x, y: node.y, vx: node.vx, vy: node.vy });
+      });
+
       link.attr('d', (d) => {
         const sx = d.source.x;
         const sy = d.source.y;
