@@ -1120,7 +1120,8 @@
         .force('collide', d3.forceCollide().radius((d) => (d.kind === 'account' ? 26 : d.kind === 'you' ? 34 : 22)));
 
       const rootNode = processed.nodes.find((node) => node.kind === 'you');
-      if (rootNode) {
+      const shouldPinRoot = rootNode && !positionCache.has(rootNode.id);
+      if (shouldPinRoot) {
         rootNode.fx = width / 2;
         rootNode.fy = height / 2;
       }
@@ -1377,7 +1378,7 @@
         canvas.style.height = nextHeight + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         simulation.force('center', d3.forceCenter(nextWidth / 2, nextHeight / 2));
-        if (rootNode) {
+        if (shouldPinRoot) {
           rootNode.fx = nextWidth / 2;
           rootNode.fy = nextHeight / 2;
         }
