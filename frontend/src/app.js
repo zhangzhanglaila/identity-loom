@@ -1543,10 +1543,7 @@
 
     const handleSelectNode = async (node) => {
       if (!node) return;
-      const visibleInCurrentGraph = displayGraph.nodes.some((item) => item.id === node.id);
-      if (displayMode === 'overview' && !visibleInCurrentGraph) {
-        setDisplayMode('full');
-      }
+      setDisplayMode('full');
       setGraph((prev) => ({ ...prev, nodes: dedupeById([...prev.nodes, node]) }));
       setSelectedNode(node);
       setSelectedRelationship(null);
