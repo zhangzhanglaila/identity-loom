@@ -1160,6 +1160,7 @@
     const highlightIds = props.highlightIds;
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
+    const onClearSelection = props.onClearSelection;
     const svgRef = useRef(null);
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
@@ -1229,11 +1230,7 @@
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const focused = focusNodeId != null;
       const idOf = (x) => (x && typeof x === 'object' ? x.id : x);
-      const activeNodeIds = focused ? new Set([focusNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
-      const isActiveNode = (d) => !focused || (activeNodeIds && activeNodeIds.has(d.id));
-      const isActiveLink = (d) => !focused || idOf(d.source) === focusNodeId || idOf(d.target) === focusNodeId;
       const positionCache = positionCacheRef.current;
 
       processed.nodes.forEach((node) => {
@@ -1299,6 +1296,13 @@
       });
 
       const render = () => {
+        const _rs = selectionStateRef.current;
+        const selectedNodeId = _rs.selectedNodeId;
+        const highlightIds = _rs.highlightIds;
+        const hasSelection = selectedNodeId != null;
+        const activeNodeIds = hasSelection ? new Set([selectedNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
+        const isActiveNode = (d) => !hasSelection || (activeNodeIds && activeNodeIds.has(d.id));
+        const isActiveLink = (d) => !hasSelection || idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId;
         ctx.save();
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = 'rgba(5, 11, 20, 0.68)';
@@ -1388,7 +1392,7 @@
             || node.kind === 'provider'
             || node.kind === 'identifier'
             || node.id === selectedNodeId
-            || (focused && activeNodeIds?.has(node.id) && !node.synthetic);
+            || (hasSelection && activeNodeIds?.has(node.id) && !node.synthetic);
           if (shouldLabel) {
             const baseLabel = node.kind === 'account'
               ? (node.username || node.name || node.id)
@@ -1431,6 +1435,8 @@
       render();
 
       let dragNode = null;
+      let downClientX = 0;
+      let downClientY = 0;
       const findNode = (x, y) => {
         const [px, py] = transform.invert([x, y]);
         let closest = null;
@@ -1449,6 +1455,8 @@
       };
 
       const onPointerDown = (event) => {
+        downClientX = event.clientX;
+        downClientY = event.clientY;
         const rect = canvas.getBoundingClientRect();
         const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
         if (node && node.kind !== 'you') {
@@ -1477,6 +1485,8 @@
       };
 
       const onClick = (event) => {
+        const moved = Math.hypot(event.clientX - downClientX, event.clientY - downClientY);
+        if (moved > 5) return;
         const rect = canvas.getBoundingClientRect();
         const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
         if (node) {
@@ -1494,7 +1504,11 @@
             picked = link;
           }
         });
-        if (picked) onSelectRelationship(picked);
+        if (picked) {
+          onSelectRelationship(picked);
+        } else if (onClearSelection) {
+          onClearSelection();
+        }
       };
 
       canvas.addEventListener('pointerdown', onPointerDown);
@@ -1533,7 +1547,7 @@
         canvas.removeEventListener('pointerleave', onPointerUp);
         canvas.removeEventListener('click', onClick);
       };
-    }, [processed, layoutMode, onSelectNode, onSelectRelationship]);
+    }, [processed, layoutMode, onSelectNode, onSelectRelationship, onClearSelection]);
 
     return html`
       <div ref=${containerRef} className="graph-canvas-wrap">
@@ -1680,7 +1694,6 @@
     const handleSelectNode = useCallback(async (node) => {
       if (!node) return;
       clearLoadRetry();
-      setDisplayMode('full');
       setGraph((prev) => {
         const exists = prev.nodes.some((n) => n.id === node.id);
         if (exists) return prev;
@@ -1709,6 +1722,13 @@
       setSelectedNode(null);
       setNeighbors(null);
       setIsDetailsOpen(true);
+    }, []);
+
+    const handleClearSelection = useCallback(() => {
+      setSelectedNode(null);
+      setSelectedRelationship(null);
+      setNeighbors(null);
+      setIsDetailsOpen(false);
     }, []);
 
     const handleAddNode = async () => {
@@ -1819,6 +1839,7 @@
                     highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
+                    onClearSelection=${handleClearSelection}
                   />
                 `
               : html`
