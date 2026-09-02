@@ -1573,6 +1573,7 @@
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
     const loadRetryRef = useRef(null);
+    const neighborReqRef = useRef(0);
     const t = createT(locale);
 
     const clearLoadRetry = useCallback(() => {
@@ -1694,21 +1695,25 @@
     const handleSelectNode = useCallback(async (node) => {
       if (!node) return;
       clearLoadRetry();
-      setGraph((prev) => {
-        const exists = prev.nodes.some((n) => n.id === node.id);
-        if (exists) return prev;
-        return { ...prev, nodes: dedupeById([...prev.nodes, node]) };
-      });
+      if (!node.synthetic) {
+        setGraph((prev) => {
+          const exists = prev.nodes.some((n) => n.id === node.id);
+          if (exists) return prev;
+          return { ...prev, nodes: dedupeById([...prev.nodes, node]) };
+        });
+      }
       setSelectedNode(node);
       setSelectedRelationship(null);
       setNeighbors(null);
       setIsDetailsOpen(true);
       if (node.synthetic) return;
+      const reqId = ++neighborReqRef.current;
       try {
         const data = await getNeighbors(node.id, 1);
+        if (reqId !== neighborReqRef.current) return;
         setNeighbors(data);
       } catch {
-        setNeighbors(null);
+        if (reqId === neighborReqRef.current) setNeighbors(null);
       }
     }, [clearLoadRetry]);
 
@@ -1718,6 +1723,7 @@
     }, [handleSelectNode]);
 
     const handleSelectRelationship = useCallback((relationship) => {
+      neighborReqRef.current++;
       setSelectedRelationship(relationship);
       setSelectedNode(null);
       setNeighbors(null);
@@ -1725,6 +1731,7 @@
     }, []);
 
     const handleClearSelection = useCallback(() => {
+      neighborReqRef.current++;
       setSelectedNode(null);
       setSelectedRelationship(null);
       setNeighbors(null);
