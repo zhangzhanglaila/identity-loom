@@ -1,5 +1,5 @@
 ﻿(function () {
-  const { useEffect, useMemo, useState, useRef } = React;
+  const { useEffect, useMemo, useState, useRef, useCallback } = React;
   const html = htm.bind(React.createElement);
 
   const API_BASE = 'http://localhost:8000';
@@ -249,6 +249,12 @@
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   }
 
+  function textIcon(bgColor, text, fontSize) {
+    const fs = fontSize || (text.length > 3 ? 28 : text.length > 2 ? 34 : 44);
+    const y = fs > 40 ? 80 : fs > 30 ? 76 : 72;
+    return svgDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="${bgColor}"/><text x="64" y="${y}" text-anchor="middle" font-family="Arial, 'Microsoft YaHei', sans-serif" font-size="${fs}" font-weight="700" fill="#ffffff">${text}</text></svg>`);
+  }
+
   const platformIcons = {
     google: 'https://cdn.simpleicons.org/google/ffffff',
     '谷歌': 'https://cdn.simpleicons.org/google/ffffff',
@@ -293,7 +299,119 @@
     qq: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#12b7f5"/><circle cx="46" cy="52" r="14" fill="#ffffff"/><circle cx="82" cy="52" r="14" fill="#ffffff"/><ellipse cx="64" cy="79" rx="30" ry="12" fill="#ffffff"/><path d="M39 66c4-18 14-28 25-28s21 10 25 28" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>'),
     tencentqq: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#12b7f5"/><circle cx="46" cy="52" r="14" fill="#ffffff"/><circle cx="82" cy="52" r="14" fill="#ffffff"/><ellipse cx="64" cy="79" rx="30" ry="12" fill="#ffffff"/><path d="M39 66c4-18 14-28 25-28s21 10 25 28" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>'),
     microsoftoutlook: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#0f6cbd"/><rect x="22" y="30" width="84" height="68" rx="12" fill="#ffffff"/><path d="M28 42l36 24 36-24" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 86l28-20 8 6 36-26" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="92" cy="48" r="16" fill="#0f6cbd"/><text x="92" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">O</text></svg>'),
-    outlook: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#0f6cbd"/><rect x="22" y="30" width="84" height="68" rx="12" fill="#ffffff"/><path d="M28 42l36 24 36-24" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 86l28-20 8 6 36-26" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="92" cy="48" r="16" fill="#0f6cbd"/><text x="92" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">O</text></svg>')
+    outlook: svgDataUrl('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#0f6cbd"/><rect x="22" y="30" width="84" height="68" rx="12" fill="#ffffff"/><path d="M28 42l36 24 36-24" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 86l28-20 8 6 36-26" fill="none" stroke="#0f6cbd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="92" cy="48" r="16" fill="#0f6cbd"/><text x="92" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">O</text></svg>'),
+    wust: textIcon('#1e5aa8', '武科'),
+    '武科大': textIcon('#1e5aa8', '武科'),
+    '武科大助手': textIcon('#1e5aa8', '助手'),
+    '武科大acm': textIcon('#1e5aa8', 'ACM', 36),
+    server: textIcon('#4a5568', 'Server', 30),
+    '服务器': textIcon('#4a5568', '服务器', 30),
+    '服务器监控': textIcon('#4a5568', '监控'),
+    database: textIcon('#336791', 'DB'),
+    '数据库': textIcon('#336791', '数据库', 30),
+    '微信小程序': textIcon('#07c160', '小程序', 32),
+    wechatminiapp: textIcon('#07c160', '小程序', 32),
+    doubao: textIcon('#3370ff', '豆包'),
+    '豆包': textIcon('#3370ff', '豆包'),
+    quark: textIcon('#0066ff', '夸克'),
+    '夸克': textIcon('#0066ff', '夸克'),
+    netease: textIcon('#e60012', '163'),
+    '网易': textIcon('#e60012', '网易'),
+    '163': textIcon('#e60012', '163'),
+    tencent: textIcon('#0052d9', '腾讯'),
+    '腾讯': textIcon('#0052d9', '腾讯'),
+    aliyun: textIcon('#ff6a00', '阿里云', 30),
+    '阿里云': textIcon('#ff6a00', '阿里云', 30),
+    amap: textIcon('#00b4ff', '高德'),
+    '高德': textIcon('#00b4ff', '高德'),
+    baidumap: textIcon('#2932e1', '地图'),
+    '百度地图': textIcon('#2932e1', '地图'),
+    baiduzhidao: textIcon('#2932e1', '知道'),
+    '百度知道': textIcon('#2932e1', '知道'),
+    chsi: textIcon('#2b5fb8', '学信'),
+    '学信网': textIcon('#2b5fb8', '学信'),
+    chinamobile: textIcon('#0085d0', '移动'),
+    '中国移动': textIcon('#0085d0', '移动'),
+    icbc: textIcon('#c8161d', '工行'),
+    '工商银行': textIcon('#c8161d', '工行'),
+    unionpay: textIcon('#e60012', '闪付'),
+    '云闪付': textIcon('#e60012', '闪付'),
+    '国家反诈中心': textIcon('#d4302c', '反诈', 32),
+    '智慧团建': textIcon('#e60012', '团建'),
+    zhihuituangjian: textIcon('#e60012', '团建'),
+    chaoxing: textIcon('#1d6dd1', '超星'),
+    '超星': textIcon('#1d6dd1', '超星'),
+    xueyinonline: textIcon('#0066cc', '学银'),
+    '学银在线': textIcon('#0066cc', '学银'),
+    ulearning: textIcon('#0099ff', '优学'),
+    '优学院': textIcon('#0099ff', '优学'),
+    eudic: textIcon('#ff6600', '欧路'),
+    '欧路词典': textIcon('#ff6600', '欧路'),
+    saikr: textIcon('#ff6600', '赛氪'),
+    '赛氪': textIcon('#ff6600', '赛氪'),
+    ezviz: textIcon('#0099ff', '萤石'),
+    '萤石': textIcon('#0099ff', '萤石'),
+    '鲨鱼记账': textIcon('#00b4ff', '鲨鱼'),
+    shayuzhangdan: textIcon('#00b4ff', '鲨鱼'),
+    '一元机场': textIcon('#667eea', '机场'),
+    ygcloud: textIcon('#667eea', '机场'),
+    '领航网盘': textIcon('#3370ff', '领航'),
+    lanzou: textIcon('#3370ff', '领航'),
+    '大学搜题酱': textIcon('#ff6600', '搜题'),
+    soujiao: textIcon('#ff6600', '搜题'),
+    '希冀': textIcon('#0099ff', '希冀'),
+    hduhelp: textIcon('#0099ff', '希冀'),
+    '四级': textIcon('#1e5aa8', '四级'),
+    '湖北文旅': textIcon('#1e5aa8', '文旅'),
+    '白描': textIcon('#4a5568', '白描'),
+    baimiao: textIcon('#4a5568', '白描'),
+    '智慧树': textIcon('#0099ff', '智慧树', 30),
+    zhihuishu: textIcon('#0099ff', '智慧树', 30),
+    '优课': textIcon('#0099ff', '优课'),
+    uclass: textIcon('#0099ff', '优课'),
+    '睿抗': textIcon('#4a5568', '睿抗'),
+    vjudge: textIcon('#4a5568', '睿抗'),
+    '刘阳下载器': textIcon('#3370ff', '下载'),
+    liuyang: textIcon('#3370ff', '下载'),
+    '硅基流动': textIcon('#0066ff', '硅基'),
+    siliconflow: textIcon('#0066ff', '硅基'),
+    pin: textIcon('#bd081c', 'PIN', 36),
+    oj: textIcon('#4a5568', 'OJ', 36),
+    pta: textIcon('#4a5568', 'PTA', 32),
+    neea: textIcon('#1e5aa8', 'NEEA', 28),
+    wsl: textIcon('#0078d4', 'WSL', 36),
+    wifi: textIcon('#0099ff', 'WiFi', 36),
+    mac: textIcon('#555555', 'Mac', 38),
+    xshell: textIcon('#4a5568', 'XSh', 36),
+    vmware: textIcon('#607078', 'VM', 40),
+    cpolar: textIcon('#4a5568', 'cpolar', 28),
+    pika: textIcon('#ff6b6b', 'pika', 32),
+    trae: textIcon('#000000', 'TRAE', 32),
+    codex: textIcon('#10a37f', 'Codex', 28),
+    claudecode: textIcon('#d97757', 'CC', 44),
+    claude: textIcon('#d97757', 'Claude', 28),
+    elastic: textIcon('#005571', 'ES', 40),
+    fastgpt: textIcon('#0066ff', 'FGPT', 32),
+    goodnotes: textIcon('#ff6b6b', 'GN', 44),
+    anythingllm: textIcon('#6c5ce7', 'ALLM', 28),
+    oneapi: textIcon('#0099ff', '1API', 32),
+    aihubmix: textIcon('#6c5ce7', 'AIHub', 28),
+    modelscope: textIcon('#ff6a00', 'ModelScope', 22),
+    huggingface: textIcon('#ffd21e', 'HF', 44),
+    openai: textIcon('#10a37f', 'OpenAI', 26),
+    chatgpt: textIcon('#10a37f', 'ChatGPT', 24),
+    anger: textIcon('#4a5568', 'anger', 28),
+    clustrmaps: textIcon('#4a5568', 'CM', 40),
+    doc2markdown: textIcon('#4a5568', 'd2m', 36),
+    freenote: textIcon('#4a5568', 'freenote', 24),
+    ipinfo: textIcon('#4a5568', 'ipinfo', 26),
+    jable: textIcon('#4a5568', 'Jable', 28),
+    taonga: textIcon('#4a5568', 'Taonga', 26),
+    terabox: textIcon('#4a5568', 'TeraBox', 24),
+    usatoday: textIcon('#4a5568', 'USA', 36),
+    x: textIcon('#000000', 'X', 52),
+    serpapi: textIcon('#4a5568', 'SerpAPI', 24),
+    tavily: textIcon('#4a5568', 'Tavily', 26)
   };
 
   const iconAliases = {
@@ -1048,6 +1166,9 @@
     const iconCacheRef = useRef(new Map());
     const positionCacheRef = useRef(new Map());
     const transformRef = useRef(d3.zoomIdentity);
+    const selectionStateRef = useRef({ selectedNodeId: null, focusNodeId: null, highlightIds: null });
+    const renderFnRef = useRef(null);
+    const effectIdRef = useRef(0);
 
     const processed = useMemo(() => {
       const map = new Map(nodes.map((node) => [node.id, { ...node }]));
@@ -1063,9 +1184,19 @@
     }, [nodes, relationships]);
 
     useEffect(() => {
+      selectionStateRef.current = { selectedNodeId, focusNodeId, highlightIds };
+      if (renderFnRef.current) renderFnRef.current();
+    }, [selectedNodeId, focusNodeId, highlightIds]);
+
+    useEffect(() => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
+      const _sel = selectionStateRef.current;
+      const selectedNodeId = _sel.selectedNodeId;
+      const focusNodeId = _sel.focusNodeId;
+      const highlightIds = _sel.highlightIds;
+      const myEffectId = ++effectIdRef.current;
       const iconCache = iconCacheRef.current;
       processed.nodes.forEach((node) => {
         const url = iconUrlForNode(node);
@@ -1073,14 +1204,16 @@
         const image = new Image();
         iconCache.set(url, { image: image, loaded: false, failed: false });
         image.onload = () => {
+          if (myEffectId !== effectIdRef.current) return;
           const entry = iconCache.get(url);
           if (entry) entry.loaded = true;
-          render();
+          if (renderFnRef.current) renderFnRef.current();
         };
         image.onerror = () => {
+          if (myEffectId !== effectIdRef.current) return;
           const entry = iconCache.get(url);
           if (entry) entry.failed = true;
-          render();
+          if (renderFnRef.current) renderFnRef.current();
         };
         image.src = url;
       });
@@ -1294,6 +1427,7 @@
         render();
       };
       simulation.on('tick', ticked);
+      renderFnRef.current = render;
       render();
 
       let dragNode = null;
@@ -1391,6 +1525,7 @@
 
       return () => {
         simulation.stop();
+        renderFnRef.current = null;
         resizeObserver.disconnect();
         canvas.removeEventListener('pointerdown', onPointerDown);
         canvas.removeEventListener('pointermove', onPointerMove);
@@ -1398,7 +1533,7 @@
         canvas.removeEventListener('pointerleave', onPointerUp);
         canvas.removeEventListener('click', onClick);
       };
-    }, [processed, layoutMode, selectedNodeId, focusNodeId, highlightIds, onSelectNode, onSelectRelationship]);
+    }, [processed, layoutMode, onSelectNode, onSelectRelationship]);
 
     return html`
       <div ref=${containerRef} className="graph-canvas-wrap">
@@ -1426,12 +1561,12 @@
     const loadRetryRef = useRef(null);
     const t = createT(locale);
 
-    const clearLoadRetry = () => {
+    const clearLoadRetry = useCallback(() => {
       if (loadRetryRef.current) {
         window.clearTimeout(loadRetryRef.current);
         loadRetryRef.current = null;
       }
-    };
+    }, []);
 
     const loadGraph = async (attempt = 1) => {
       clearLoadRetry();
@@ -1514,6 +1649,7 @@
         setSearchState('idle');
         return;
       }
+      clearLoadRetry();
       try {
         const results = await searchNodes(term);
         if (!Array.isArray(results) || results.length === 0) {
@@ -1541,10 +1677,15 @@
       }
     };
 
-    const handleSelectNode = async (node) => {
+    const handleSelectNode = useCallback(async (node) => {
       if (!node) return;
+      clearLoadRetry();
       setDisplayMode('full');
-      setGraph((prev) => ({ ...prev, nodes: dedupeById([...prev.nodes, node]) }));
+      setGraph((prev) => {
+        const exists = prev.nodes.some((n) => n.id === node.id);
+        if (exists) return prev;
+        return { ...prev, nodes: dedupeById([...prev.nodes, node]) };
+      });
       setSelectedNode(node);
       setSelectedRelationship(null);
       setNeighbors(null);
@@ -1556,19 +1697,19 @@
       } catch {
         setNeighbors(null);
       }
-    };
+    }, [clearLoadRetry]);
 
-    const handleSelectMember = async (node) => {
+    const handleSelectMember = useCallback(async (node) => {
       setDisplayMode('full');
       await handleSelectNode(node);
-    };
+    }, [handleSelectNode]);
 
-    const handleSelectRelationship = (relationship) => {
+    const handleSelectRelationship = useCallback((relationship) => {
       setSelectedRelationship(relationship);
       setSelectedNode(null);
       setNeighbors(null);
       setIsDetailsOpen(true);
-    };
+    }, []);
 
     const handleAddNode = async () => {
       const id = window.prompt(t('nodeIdPrompt'));
@@ -1674,7 +1815,7 @@
                     relationships=${filteredGraph.relationships}
                     layoutMode=${layoutMode}
                     selectedNodeId=${selectedNode?.id}
-                    focusNodeId=${selectedNode?.id}
+                    focusNodeId=${null}
                     highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
