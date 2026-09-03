@@ -182,18 +182,22 @@
   };
 
   const relationLabels = {
-    login_by: { zh: '登录', en: 'Login' },
-    binds: { zh: '绑定', en: 'Binds' },
-    belongs_to: { zh: '属于平台', en: 'Belongs to' },
-    owns: { zh: '拥有', en: 'Owns' },
-    verifies: { zh: '验证', en: 'Verifies' },
-    registered_by: { zh: '注册于', en: 'Registered by' },
-    uses: { zh: '使用', en: 'Uses' }
+    login_by: { zh: '登录', en: 'Login', zhRev: '用于登录', enRev: 'Used by' },
+    binds: { zh: '绑定', en: 'Binds', zhRev: '绑定账号', enRev: 'Bound by' },
+    belongs_to: { zh: '属于平台', en: 'Belongs to', zhRev: '旗下账号', enRev: 'Accounts' },
+    owns: { zh: '拥有', en: 'Owns', zhRev: '拥有者', enRev: 'Owner' },
+    verifies: { zh: '验证', en: 'Verifies', zhRev: '验证', enRev: 'Verifies' },
+    registered_by: { zh: '注册于', en: 'Registered by', zhRev: '注册于', enRev: 'Registered by' },
+    uses: { zh: '使用', en: 'Uses', zhRev: '使用者', enRev: 'Used by' }
   };
 
-  function formatRelationLabel(locale, relationship) {
+  // reversed: 当前查看的节点处于关系的 target 一端时，使用反向文案
+  function formatRelationLabel(locale, relationship, reversed) {
     const raw = relationship?.label || relationship?.relation_type || 'related_to';
-    return relationLabels[raw]?.[locale] || raw;
+    const item = relationLabels[raw];
+    if (!item) return raw;
+    if (reversed) return item[locale + 'Rev'] || item[locale];
+    return item[locale];
   }
 
   function isUserVisibleRelationship(relationship) {
@@ -1060,7 +1064,7 @@
               : html`<div className="connection-list">
                   ${connections.map((item) => html`
                     <button key=${item.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(item.other)}>
-                      <span className="connection-row__label">${formatRelationLabel(locale, item.rel)}</span>
+                      <span className="connection-row__label">${formatRelationLabel(locale, item.rel, item.rel.target === node.id)}</span>
                       <span className="connection-row__name">
                         ${renderNodeIcon(item.other, 'connection-row__icon')}
                         <span className="connection-row__text">${item.other.display_name || item.other.name || item.other.id}</span>
@@ -1103,7 +1107,7 @@
             : html`<div className="connection-list">
                 ${connections.map((c) => html`
                   <button key=${c.rel.id} type="button" className="connection-row" onClick=${() => onSelectNode && onSelectNode(c.other)}>
-                    <span className="connection-row__label">${formatRelationLabel(locale, c.rel)}</span>
+                    <span className="connection-row__label">${formatRelationLabel(locale, c.rel, c.rel.target === node.id)}</span>
                     <span className="connection-row__name">
                       ${renderNodeIcon(c.other, 'connection-row__icon')}
                       <span className="connection-row__text">${nodeLabel(c.other)}</span>
@@ -1333,10 +1337,11 @@
         ctx.lineJoin = 'round';
 
         processed.links.forEach((link) => {
-          const sx = link.source.x;
-          const sy = link.source.y;
-          const tx = link.target.x;
-          const ty = link.target.y;
+          const sx = link.source?.x;
+          const sy = link.source?.y;
+          const tx = link.target?.x;
+          const ty = link.target?.y;
+          if (sx == null || sy == null || tx == null || ty == null) return;
           const active = isActiveLink(link);
           ctx.beginPath();
           ctx.moveTo(sx, sy);
@@ -1369,6 +1374,7 @@
                 : '#0a1630';
           const x = node.x;
           const y = node.y;
+          if (x == null || y == null) return;
 
           ctx.save();
           ctx.globalAlpha = active ? 1 : 0.22;
@@ -1515,6 +1521,7 @@
         const [px, py] = transform.invert([event.clientX - rect.left, event.clientY - rect.top]);
         let picked = null;
         processed.links.forEach((link) => {
+          if (link.source?.x == null || link.target?.x == null) return;
           const mx = (link.source.x + link.target.x) / 2;
           const my = (link.source.y + link.target.y) / 2;
           const dx = px - mx;
@@ -1573,6 +1580,33 @@
         <canvas ref=${canvasRef} className="graph-canvas"></canvas>
       </div>
     `;
+  }
+
+  class ErrorBoundary extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = { error: null };
+    }
+    static getDerivedStateFromError(error) {
+      return { error: error };
+    }
+    componentDidCatch(error, info) {
+      try { console.error('[IdentityGraph] render error:', error, info); } catch (e) {}
+    }
+    render() {
+      if (this.state.error) {
+        const message = (this.state.error && this.state.error.message) || String(this.state.error);
+        return html`
+          <div style=${{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(3,8,16,0.92)', color: '#d7ecff', fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <div style=${{ maxWidth: 480, width: '100%', background: '#0f172a', border: '1px solid #23324a', borderRadius: 12, padding: '28px', textAlign: 'center', boxShadow: '0 18px 60px rgba(0,0,0,0.5)' }}>
+              <div style=${{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>图谱渲染出现异常</div>
+              <pre style=${{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, color: '#fda4a4', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 12, margin: '0 0 18px', textAlign: 'left' }}>${message}</pre>
+              <button type="button" onClick=${() => window.location.reload()} style=${{ cursor: 'pointer', padding: '9px 22px', borderRadius: 8, border: '1px solid #96e0f7', background: 'rgba(150,224,247,0.12)', color: '#d7ecff', fontWeight: 700 }}>重新加载图谱</button>
+            </div>
+          </div>`;
+      }
+      return this.props.children;
+    }
   }
 
   function App() {
@@ -1905,5 +1939,5 @@
     `;
   }
 
-  ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+  ReactDOM.createRoot(document.getElementById('root')).render(html`<${ErrorBoundary}><${App} /><//>`);
 })();
