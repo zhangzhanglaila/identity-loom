@@ -810,7 +810,6 @@
         ${searchMessage ? html`<span className="toolbar__search-message">${searchMessage}</span>` : null}
         <button className="toolbar__button" onClick=${onSearch}>${t('search')}</button>
         <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? t('spider') : t('layered')}</button>
-        <button className="toolbar__button" onClick=${onToggleDisplayMode}>${displayMode === 'overview' ? t('fullGraph') : t('overview')}</button>
         <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? t('graphView') : t('listView')}</button>
         <button
           className=${'toolbar__button toolbar__button--icon ' + (isSidebarOpen ? 'is-active' : '')}
@@ -1580,7 +1579,7 @@
     const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
     const [layoutMode, setLayoutMode] = useState('spider');
-    const [displayMode, setDisplayMode] = useState('overview');
+    const [displayMode, setDisplayMode] = useState('full');
     const [viewMode, setViewMode] = useState('graph');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -1634,9 +1633,7 @@
       };
     }, []);
 
-    const displayGraph = useMemo(() => (
-      displayMode === 'overview' ? buildOverviewGraph(graph) : graph
-    ), [graph, displayMode]);
+    const displayGraph = useMemo(() => graph, [graph]);
 
     const neighborIds = useMemo(() => {
       if (!neighbors?.nodes) return null;
