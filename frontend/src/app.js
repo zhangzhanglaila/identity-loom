@@ -654,7 +654,18 @@
       const group = accountGroups.get(key);
       group.members.push(account);
       group.memberCount += 1;
-      accountToGroup.set(account.id, group.id);
+    });
+
+    // 多账号平台：平台与成员账号都显示（平台→账号→绑定/登录）；单账号平台折叠成一个点
+    const expandedMembers = new Set();
+    accountGroups.forEach((group) => {
+      group.members.forEach((member) => {
+        if (group.memberCount > 1) {
+          expandedMembers.add(member.id);
+        } else {
+          accountToGroup.set(member.id, group.id);
+        }
+      });
     });
 
     const visibleRelationships = sourceRelationships.filter(isUserVisibleRelationship);
@@ -666,21 +677,18 @@
 
     const nodes = sourceNodes
       .filter((node) => {
-        if (node.kind === 'account' || node.kind === 'platform' || node.kind === 'tag') return false;
+        if (node.kind === 'platform' || node.kind === 'tag') return false;
+        if (node.kind === 'account') return expandedMembers.has(node.id);
         if (node.kind === 'you') return true;
         return participatingIds.has(node.id);
       })
-      .map((node) => ({ ...node }));
+      .map((node) => ({ ...node, overviewMember: expandedMembers.has(node.id) }));
     nodes.push(...accountGroups.values());
 
     const nodeIds = new Set(nodes.map((node) => node.id));
     const relationshipMap = new Map();
-    visibleRelationships.forEach((relationship) => {
-      const source = accountToGroup.get(relationship.source) || relationship.source;
-      const target = accountToGroup.get(relationship.target) || relationship.target;
+    const pushOverviewLink = (source, target, relationType, raw) => {
       if (!nodeIds.has(source) || !nodeIds.has(target) || source === target) return;
-
-      const relationType = relationship.relation_type || relationship.label || 'related_to';
       const key = [source, target, relationType].sort().join('::');
       if (!relationshipMap.has(key)) {
         relationshipMap.set(key, {
@@ -688,14 +696,25 @@
           source,
           target,
           relation_type: relationType,
-          label: relationship.label || relationType,
+          label: (raw && raw.label) || relationType,
           count: 0,
           member_ids: []
         });
       }
       const aggregated = relationshipMap.get(key);
       aggregated.count += 1;
-      aggregated.member_ids.push({ source: relationship.source, target: relationship.target });
+      if (raw) aggregated.member_ids.push({ source: raw.source, target: raw.target });
+    };
+    visibleRelationships.forEach((relationship) => {
+      const source = accountToGroup.get(relationship.source) || relationship.source;
+      const target = accountToGroup.get(relationship.target) || relationship.target;
+      pushOverviewLink(source, target, relationship.relation_type || relationship.label || 'related_to', relationship);
+    });
+    // 多账号平台补 平台组→成员账号 的层级连线
+    accountGroups.forEach((group) => {
+      if (group.memberCount > 1) {
+        group.members.forEach((member) => pushOverviewLink(group.id, member.id, 'belongs_to', null));
+      }
     });
 
     return {
@@ -1391,6 +1410,7 @@
           const shouldLabel = node.kind === 'you'
             || node.kind === 'provider'
             || node.kind === 'identifier'
+            || node.overviewMember
             || node.id === selectedNodeId
             || (hasSelection && activeNodeIds?.has(node.id) && !node.synthetic);
           if (shouldLabel) {
@@ -1632,7 +1652,7 @@
       const sourceIds = neighborIds || localNeighborIds;
       if (!sourceIds || displayMode !== 'overview') return sourceIds;
       const accountGroupIds = new Map();
-      displayGraph.nodes.filter((node) => node.synthetic).forEach((group) => {
+      displayGraph.nodes.filter((node) => node.synthetic && node.memberCount === 1).forEach((group) => {
         (group.members || []).forEach((member) => accountGroupIds.set(member.id, group.id));
       });
       return new Set([...sourceIds].map((id) => accountGroupIds.get(id) || id));
