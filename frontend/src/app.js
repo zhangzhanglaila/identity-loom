@@ -1206,6 +1206,20 @@
       return { nodes: [...map.values()], links: links };
     }, [nodes, relationships]);
 
+    // 未选中任何节点时默认点亮的核心节点: 被其它账号用来登录(login_by)的主账号 + YOU
+    const defaultCoreIds = useMemo(() => {
+      const core = new Set();
+      const kindById = new Map(nodes.map((n) => [n.id, n.kind]));
+      relationships.forEach((rel) => {
+        const type = rel.relation_type || rel.label;
+        if (type !== 'login_by') return;
+        const targetId = typeof rel.target === 'object' ? rel.target?.id : rel.target;
+        if (targetId && kindById.get(targetId) === 'account') core.add(targetId);
+      });
+      nodes.forEach((n) => { if (n.kind === 'you') core.add(n.id); });
+      return core;
+    }, [nodes, relationships]);
+
     useEffect(() => {
       selectionStateRef.current = { selectedNodeId, focusNodeId, highlightIds };
       if (renderFnRef.current) renderFnRef.current();
@@ -1303,7 +1317,9 @@
       const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', (event) => {
         transform = event.transform;
         transformRef.current = event.transform;
-        render();
+        // render 在本 effect 下方才用 const 声明; 恢复 transform 时会同步触发本回调,
+        // 经 renderFnRef 间接调用以避免 "Cannot access 'render' before initialization"
+        if (renderFnRef.current) renderFnRef.current();
       });
       let transform = transformRef.current || d3.zoomIdentity;
       d3.select(canvas).call(zoom);
@@ -1323,8 +1339,12 @@
         const highlightIds = _rs.highlightIds;
         const hasSelection = selectedNodeId != null;
         const activeNodeIds = hasSelection ? new Set([selectedNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
-        const isActiveNode = (d) => !hasSelection || (activeNodeIds && activeNodeIds.has(d.id));
-        const isActiveLink = (d) => !hasSelection || idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId;
+        const isActiveNode = (d) => !hasSelection
+          ? defaultCoreIds.has(d.id)
+          : (activeNodeIds && activeNodeIds.has(d.id));
+        const isActiveLink = (d) => !hasSelection
+          ? (defaultCoreIds.has(idOf(d.source)) || defaultCoreIds.has(idOf(d.target)))
+          : (idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId);
         ctx.save();
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = 'rgba(5, 11, 20, 0.68)';
@@ -1412,15 +1432,20 @@
 
           ctx.restore();
 
-          const shouldLabel = node.kind === 'you'
-            || node.kind === 'provider'
-            || node.kind === 'identifier'
-            || node.overviewMember
-            || node.id === selectedNodeId
-            || (hasSelection && activeNodeIds?.has(node.id) && !node.synthetic);
+          const shouldLabel = hasSelection
+            ? (node.kind === 'you'
+              || node.kind === 'provider'
+              || node.kind === 'identifier'
+              || node.overviewMember
+              || node.id === selectedNodeId
+              || (activeNodeIds?.has(node.id) && !node.synthetic))
+            : (node.kind === 'you' || defaultCoreIds.has(node.id));
           if (shouldLabel) {
+            const preferReadableName = !hasSelection && defaultCoreIds.has(node.id);
             const baseLabel = node.kind === 'account'
-              ? (node.username || node.name || node.id)
+              ? (preferReadableName
+                ? (node.name || node.display_name || node.username || node.id)
+                : (node.username || node.name || node.id))
               : (node.display_name || node.name || node.id);
             const label = node.synthetic && node.memberCount > 1
               ? baseLabel + ' (' + node.memberCount + ')'
