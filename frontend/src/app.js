@@ -1220,6 +1220,11 @@
       return core;
     }, [nodes, relationships]);
 
+    const youNodeId = useMemo(() => {
+      const you = nodes.find((n) => n.kind === 'you');
+      return you ? you.id : null;
+    }, [nodes]);
+
     useEffect(() => {
       selectionStateRef.current = { selectedNodeId, focusNodeId, highlightIds };
       if (renderFnRef.current) renderFnRef.current();
@@ -1343,7 +1348,7 @@
           ? defaultCoreIds.has(d.id)
           : (activeNodeIds && activeNodeIds.has(d.id));
         const isActiveLink = (d) => !hasSelection
-          ? (defaultCoreIds.has(idOf(d.source)) || defaultCoreIds.has(idOf(d.target)))
+          ? (idOf(d.source) === youNodeId || idOf(d.target) === youNodeId)
           : (idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId);
         ctx.save();
         ctx.clearRect(0, 0, width, height);
