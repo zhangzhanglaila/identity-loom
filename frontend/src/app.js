@@ -1347,9 +1347,15 @@
         const isActiveNode = (d) => !hasSelection
           ? defaultCoreIds.has(d.id)
           : (activeNodeIds && activeNodeIds.has(d.id));
-        const isActiveLink = (d) => !hasSelection
-          ? (idOf(d.source) === youNodeId || idOf(d.target) === youNodeId)
-          : (idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId);
+        const isActiveLink = (d) => {
+          if (hasSelection) {
+            return idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId;
+          }
+          const fromYou = idOf(d.source) === youNodeId;
+          const toYou = idOf(d.target) === youNodeId;
+          return (fromYou && defaultCoreIds.has(idOf(d.target)))
+            || (toYou && defaultCoreIds.has(idOf(d.source)));
+        };
         ctx.save();
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = 'rgba(5, 11, 20, 0.68)';
