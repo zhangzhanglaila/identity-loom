@@ -1179,6 +1179,7 @@
     const layoutMode = props.layoutMode;
     const selectedNodeId = props.selectedNodeId;
     const focusNodeId = props.focusNodeId;
+    const focusNonce = props.focusNonce;
     const highlightIds = props.highlightIds;
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
@@ -1191,6 +1192,7 @@
     const transformRef = useRef(d3.zoomIdentity);
     const selectionStateRef = useRef({ selectedNodeId: null, focusNodeId: null, highlightIds: null });
     const renderFnRef = useRef(null);
+    const focusFnRef = useRef(null);
     const effectIdRef = useRef(0);
 
     const processed = useMemo(() => {
@@ -1229,6 +1231,20 @@
       selectionStateRef.current = { selectedNodeId, focusNodeId, highlightIds };
       if (renderFnRef.current) renderFnRef.current();
     }, [selectedNodeId, focusNodeId, highlightIds]);
+
+    // 搜索等程序式选中: 把目标节点平滑移动到画布中心
+    useEffect(() => {
+      if (!focusNodeId) return undefined;
+      let tries = 0;
+      let timer = null;
+      const tryFocus = () => {
+        const fn = focusFnRef.current;
+        if (fn && fn(focusNodeId)) return;
+        if (++tries < 8) timer = setTimeout(tryFocus, 90);
+      };
+      timer = setTimeout(tryFocus, 80);
+      return () => { if (timer) clearTimeout(timer); };
+    }, [focusNodeId, focusNonce]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -1493,6 +1509,26 @@
       };
       simulation.on('tick', ticked);
       renderFnRef.current = render;
+
+      // 将指定节点平滑居中(供搜索聚焦), 节点坐标未就绪时返回 false 由外层重试
+      const focusNodeById = (id) => {
+        const target = processed.nodes.find((n) => n.id === id);
+        if (!target || target.x == null || target.y == null) return false;
+        const cw = container.clientWidth || width;
+        const ch = container.clientHeight || height;
+        // 右侧详情面板会遮挡, 将节点居中到面板左侧的可见区域
+        const panelEl = typeof document !== 'undefined' ? document.querySelector('.detail-panel') : null;
+        const panelW = panelEl ? panelEl.offsetWidth : 0;
+        const centerX = (cw - panelW) / 2;
+        const curK = transformRef.current ? transformRef.current.k : 1;
+        const k = Math.max(curK || 1, 1.25);
+        const nextTransform = d3.zoomIdentity
+          .translate(centerX - target.x * k, ch / 2 - target.y * k)
+          .scale(k);
+        d3.select(canvas).transition().duration(550).call(zoom.transform, nextTransform);
+        return true;
+      };
+      focusFnRef.current = focusNodeById;
       render();
 
       let dragNode = null;
@@ -1602,6 +1638,7 @@
       return () => {
         simulation.stop();
         renderFnRef.current = null;
+        focusFnRef.current = null;
         resizeObserver.disconnect();
         canvas.removeEventListener('pointerdown', onPointerDown);
         canvas.removeEventListener('pointermove', onPointerMove);
@@ -1656,6 +1693,7 @@
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
     const [graph, setGraph] = useState({ nodes: [], relationships: [] });
     const [selectedNode, setSelectedNode] = useState(null);
+    const [focusReq, setFocusReq] = useState({ id: null, nonce: 0 });
     const [selectedRelationship, setSelectedRelationship] = useState(null);
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
@@ -1767,6 +1805,7 @@
           setSelectedRelationship(null);
           setNeighbors(null);
           setIsDetailsOpen(true);
+          setFocusReq({ id: results[0].id, nonce: Date.now() });
           try {
             const data = await getNeighbors(results[0].id, 1);
             setNeighbors(data);
@@ -1929,7 +1968,8 @@
                     relationships=${filteredGraph.relationships}
                     layoutMode=${layoutMode}
                     selectedNodeId=${selectedNode?.id}
-                    focusNodeId=${null}
+                    focusNodeId=${focusReq.id}
+                    focusNonce=${focusReq.nonce}
                     highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
