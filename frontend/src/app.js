@@ -1173,6 +1173,149 @@
     `;
   }
 
+  const RELATION_TYPES = [
+    { value: 'binds', zh: '绑定' },
+    { value: 'owns', zh: '拥有' },
+    { value: 'belongs_to', zh: '属于' },
+    { value: 'login_by', zh: '登录方式' },
+    { value: 'related_to', zh: '相关' },
+  ];
+
+  // 可搜索的节点选择下拉(输入即过滤, 键盘上下/回车可选)
+  function NodePicker(props) {
+    const allNodes = props.nodes || [];
+    const value = props.value;
+    const onPick = props.onPick;
+    const excludeId = props.excludeId;
+    const placeholder = props.placeholder;
+    const [query, setQuery] = useState('');
+    const [open, setOpen] = useState(false);
+    const [hi, setHi] = useState(0);
+    const picked = value ? allNodes.find((n) => n.id === value) : null;
+    const candidates = useMemo(() => {
+      const q = query.trim().toLowerCase();
+      const base = allNodes.filter((n) => n.id !== excludeId);
+      const matched = q
+        ? base.filter((n) => {
+            const label = (nodeLabel(n) || '').toLowerCase();
+            return label.includes(q) || String(n.id).toLowerCase().includes(q);
+          })
+        : base;
+      return matched.slice(0, 40);
+    }, [allNodes, query, excludeId]);
+    useEffect(() => { setHi(0); }, [query, open]);
+    const choose = (n) => {
+      onPick(n ? n.id : null);
+      setQuery(n ? nodeLabel(n) : '');
+      setOpen(false);
+    };
+    return html`
+      <div className="node-picker">
+        <input
+          className="node-picker__input"
+          autoComplete="off"
+          spellcheck=${false}
+          value=${open ? query : (picked ? nodeLabel(picked) : query)}
+          placeholder=${placeholder}
+          onFocus=${(e) => { setOpen(true); setQuery(picked ? nodeLabel(picked) : ''); if (e.target.select) e.target.select(); }}
+          onBlur=${() => { window.setTimeout(() => setOpen(false), 140); }}
+          onInput=${(e) => { setQuery(e.target.value); setOpen(true); if (value) onPick(null); }}
+          onKeyDown=${(e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((k) => Math.min(candidates.length - 1, k + 1)); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((k) => Math.max(0, k - 1)); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (open && candidates[hi]) choose(candidates[hi]); }
+            else if (e.key === 'Escape') { setOpen(false); }
+          }}
+        />
+        ${open ? html`
+          <div className="node-picker__list">
+            ${candidates.length === 0
+              ? html`<div className="node-picker__empty">无匹配节点</div>`
+              : candidates.map((n, idx) => html`
+                <button
+                  type="button"
+                  key=${n.id}
+                  className=${'node-picker__item' + (idx === hi ? ' is-hi' : '') + (n.id === value ? ' is-selected' : '')}
+                  onMouseDown=${(e) => { e.preventDefault(); choose(n); }}
+                  onMouseEnter=${() => setHi(idx)}
+                >
+                  <span className="node-picker__kind">${n.kind}</span>
+                  <span className="node-picker__name">${nodeLabel(n)}</span>
+                  <span className="node-picker__id">${n.id}</span>
+                </button>`)}
+          </div>` : null}
+      </div>`;
+  }
+
+  // 新增关系: 选择两个已有节点 + 关系类型, 确定即连线
+  function AddRelationDialog(props) {
+    const open = props.open;
+    const onClose = props.onClose;
+    const nodes = props.nodes || [];
+    const onSubmit = props.onSubmit;
+    const zh = (props.locale || 'zh') === 'zh';
+    const [source, setSource] = useState(null);
+    const [target, setTarget] = useState(null);
+    const [relType, setRelType] = useState('binds');
+    useEffect(() => {
+      if (open) { setSource(null); setTarget(null); setRelType('binds'); }
+    }, [open]);
+    if (!open) return null;
+    const same = source && target && source === target;
+    const canSubmit = Boolean(source) && Boolean(target) && !same;
+    return html`
+      <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal rel-modal">
+          <div className="panel__title">${zh ? '// 新增关系 · 连接两个已有节点' : '// ADD RELATION · LINK TWO NODES'}</div>
+          <div className="rel-form">
+            <div className="rel-field">
+              <span className="rel-field__label">${zh ? '起点节点 SOURCE' : 'SOURCE NODE'}</span>
+              <${NodePicker}
+                nodes=${nodes}
+                value=${source}
+                excludeId=${target}
+                placeholder=${zh ? '输入名称 / id 搜索并选择起点…' : 'Search source node…'}
+                onPick=${setSource}
+              />
+            </div>
+            <div className="rel-bridge" aria-hidden="true">── ${relType} ──▶</div>
+            <div className="rel-field">
+              <span className="rel-field__label">${zh ? '终点节点 TARGET' : 'TARGET NODE'}</span>
+              <${NodePicker}
+                nodes=${nodes}
+                value=${target}
+                excludeId=${source}
+                placeholder=${zh ? '输入名称 / id 搜索并选择终点…' : 'Search target node…'}
+                onPick=${setTarget}
+              />
+            </div>
+            <div className="rel-field">
+              <span className="rel-field__label">${zh ? '关系类型 RELATION' : 'RELATION TYPE'}</span>
+              <div className="rel-types">
+                ${RELATION_TYPES.map((rt) => html`
+                  <button
+                    type="button"
+                    key=${rt.value}
+                    className=${'rel-type' + (relType === rt.value ? ' is-active' : '')}
+                    onClick=${() => setRelType(rt.value)}
+                  >${zh ? rt.zh + ' · ' + rt.value : rt.value}</button>`)}
+              </div>
+            </div>
+            ${same ? html`<div className="rel-hint rel-hint--err">${zh ? '起点和终点不能是同一个节点' : 'Source and target must be different nodes'}</div>` : null}
+            <div className="modal__actions">
+              <button className="toolbar__button" type="button" onClick=${onClose}>${zh ? '取消' : 'Cancel'}</button>
+              <button
+                className="toolbar__button rel-submit"
+                type="button"
+                disabled=${!canSubmit}
+                onClick=${() => { if (!canSubmit) return; onSubmit({ source: source, target: target, relation_type: relType }); }}
+              >${zh ? '连 接' : 'CONNECT'}</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function GraphCanvas(props) {
     const nodes = props.nodes;
     const relationships = props.relationships;
@@ -1829,6 +1972,7 @@
     const [selectedRelationship, setSelectedRelationship] = useState(null);
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
+    const [addRelOpen, setAddRelOpen] = useState(false);
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
     const [bootFading, setBootFading] = useState(false);
@@ -2046,13 +2190,20 @@
       setGraph((prev) => ({ ...prev, nodes: dedupeById([...prev.nodes, node]) }));
     };
 
-    const handleAddRelationship = async () => {
-      const id = window.prompt(t('relationshipIdPrompt'));
-      if (!id) return;
-      const source = window.prompt(t('sourceNodeIdPrompt'));
-      const target = window.prompt(t('targetNodeIdPrompt'));
-      const relation_type = window.prompt(t('relationTypePrompt'), 'related_to') || 'related_to';
-      if (!source || !target) return;
+    const handleCreateRelationship = async (payload) => {
+      const source = payload.source;
+      const target = payload.target;
+      const relation_type = payload.relation_type || 'related_to';
+      if (!source || !target || source === target) return;
+      const ridOf = (x) => (x && typeof x === 'object' ? x.id : x);
+      const duplicated = graph.relationships.some((r) => {
+        const a = ridOf(r.source);
+        const b = ridOf(r.target);
+        const sameType = (r.relation_type || r.label) === relation_type;
+        return sameType && ((a === source && b === target) || (a === target && b === source));
+      });
+      if (duplicated) { setAddRelOpen(false); return; }
+      const id = 'rel_' + source + '__' + relation_type + '__' + target + '_' + Date.now().toString(36);
       const rel = { id: id, source: source, target: target, relation_type: relation_type, label: relation_type };
       try {
         await createRelationship(rel);
@@ -2060,6 +2211,7 @@
         // local fallback
       }
       setGraph((prev) => ({ ...prev, relationships: [...prev.relationships, rel] }));
+      setAddRelOpen(false);
     };
 
     const handleImportJson = async (payload) => {
@@ -2104,7 +2256,7 @@
           t=${t}
           onToggleLanguage=${() => setLocale((current) => (current === 'zh' ? 'en' : 'zh'))}
           onAddNode=${handleAddNode}
-          onAddRelationship=${handleAddRelationship}
+          onAddRelationship=${() => setAddRelOpen(true)}
           onImport=${() => setImportOpen(true)}
           onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
           onToggleDetails=${() => setIsDetailsOpen((open) => !open)}
@@ -2178,6 +2330,14 @@
           onImportCsv=${handleImportCsv}
           locale=${locale}
           t=${t}
+        />
+
+        <${AddRelationDialog}
+          open=${addRelOpen}
+          onClose=${() => setAddRelOpen(false)}
+          nodes=${graph.nodes}
+          onSubmit=${handleCreateRelationship}
+          locale=${locale}
         />
 
         ${!bootDone && (dataState === 'loading' || dataState === 'ready') ? html`

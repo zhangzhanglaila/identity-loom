@@ -911,3 +911,45 @@ svg text {
     animation: none;
   }
 }
+
+/* ===== 新增关系: 可搜索节点下拉(蜘蛛侠风格) ===== */
+.rel-modal { width: min(560px, calc(100vw - 32px)); overflow: visible; }
+.rel-form { display: grid; gap: 12px; margin-top: 10px; }
+.rel-field { display: grid; gap: 6px; text-align: left; }
+.rel-field__label { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); }
+.rel-bridge { justify-self: center; color: var(--accent); font-size: 11px; letter-spacing: 1px; opacity: .85; line-height: 1; }
+.node-picker { position: relative; }
+.node-picker__input {
+  width: 100%; border: 1px solid var(--line); border-radius: 0;
+  background: #060f22; color: var(--text); padding: 10px 12px; outline: none;
+}
+.node-picker__input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+.node-picker__list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60;
+  max-height: 248px; overflow-y: auto; background: #07142a;
+  border: 1px solid var(--line); box-shadow: var(--glow-strong);
+}
+.node-picker__item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 12px; background: transparent; border: 0; border-left: 2px solid transparent;
+  border-radius: 0; color: var(--text); cursor: pointer;
+}
+.node-picker__item.is-hi,
+.node-picker__item:hover { background: rgba(150, 224, 247, .12); border-left-color: var(--accent); }
+.node-picker__item.is-selected { background: rgba(255, 92, 85, .12); border-left-color: var(--accent-2); }
+.node-picker__kind {
+  font-size: 10px; color: var(--accent-2); letter-spacing: .5px;
+  border: 1px solid rgba(255, 92, 85, .4); padding: 1px 5px; white-space: nowrap;
+}
+.node-picker__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-picker__id { margin-left: auto; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.node-picker__empty { padding: 10px 12px; color: var(--muted); font-size: 12px; }
+.rel-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.rel-type {
+  border: 1px solid var(--line); border-radius: 0; background: #0c1c38;
+  color: var(--text); padding: 7px 11px; cursor: pointer; font-size: 12px;
+}
+.rel-type.is-active { border-color: var(--accent); color: var(--accent); box-shadow: var(--glow); }
+.rel-hint { font-size: 12px; }
+.rel-hint--err { color: var(--danger); }
+.rel-submit:not(:disabled) { border-color: var(--accent); color: var(--accent); box-shadow: var(--glow); letter-spacing: 2px; }
