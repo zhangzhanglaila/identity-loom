@@ -919,11 +919,28 @@ svg text {
 .rel-field__label { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); }
 .rel-bridge { justify-self: center; color: var(--accent); font-size: 11px; letter-spacing: 1px; opacity: .85; line-height: 1; }
 .node-picker { position: relative; }
+.node-picker__wrap { display: flex; align-items: stretch; width: 100%; }
+.node-picker__wrap:focus-within .node-picker__input { border-color: var(--accent); box-shadow: var(--glow); }
+.node-picker__wrap:focus-within .node-picker__add { border-color: var(--accent); box-shadow: var(--glow); border-left: none; }
 .node-picker__input {
-  width: 100%; border: 1px solid var(--line); border-radius: 0;
+  flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 0;
   background: #060f22; color: var(--text); padding: 10px 12px; outline: none;
 }
 .node-picker__input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+.node-picker__add {
+  flex: 0 0 auto; border: 1px solid var(--line); border-left: none; border-radius: 0;
+  background: #0c1c38; color: var(--accent); padding: 0 14px; cursor: pointer;
+  font-size: 12px; letter-spacing: 1.5px; white-space: nowrap;
+  text-shadow: 0 0 6px rgba(150, 224, 247, .5);
+  transition: background .15s, box-shadow .15s, color .15s;
+}
+.node-picker__add:hover {
+  background: rgba(150, 224, 247, .12);
+  color: #ffffff;
+  box-shadow: var(--glow);
+  text-shadow: 0 0 8px rgba(150, 224, 247, .8);
+}
+.node-picker__add:active { background: rgba(150, 224, 247, .22); }
 .node-picker__list {
   position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60;
   max-height: 248px; overflow-y: auto; background: #07142a;

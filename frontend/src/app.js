@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const { useEffect, useMemo, useState, useRef, useCallback } = React;
   const html = htm.bind(React.createElement);
 
@@ -1181,16 +1181,18 @@
     { value: 'related_to', zh: '相关' },
   ];
 
-  // 可搜索的节点选择下拉(输入即过滤, 键盘上下/回车可选)
   function NodePicker(props) {
     const allNodes = props.nodes || [];
     const value = props.value;
     const onPick = props.onPick;
     const excludeId = props.excludeId;
     const placeholder = props.placeholder;
+    const onAddNode = props.onAddNode;
+    const addLabel = props.addLabel || '+';
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [hi, setHi] = useState(0);
+    const keepOpenRef = useRef(false);
     const picked = value ? allNodes.find((n) => n.id === value) : null;
     const candidates = useMemo(() => {
       const q = query.trim().toLowerCase();
@@ -1209,24 +1211,48 @@
       setQuery(n ? nodeLabel(n) : '');
       setOpen(false);
     };
+    const handleAddMouseDown = (e) => {
+      keepOpenRef.current = true;
+      e.preventDefault();
+    };
+    const handleAddClick = () => {
+      if (onAddNode) {
+        onAddNode(query.trim());
+      }
+      window.setTimeout(() => { keepOpenRef.current = false; }, 300);
+    };
     return html`
       <div className="node-picker">
-        <input
-          className="node-picker__input"
-          autoComplete="off"
-          spellcheck=${false}
-          value=${open ? query : (picked ? nodeLabel(picked) : query)}
-          placeholder=${placeholder}
-          onFocus=${(e) => { setOpen(true); setQuery(picked ? nodeLabel(picked) : ''); if (e.target.select) e.target.select(); }}
-          onBlur=${() => { window.setTimeout(() => setOpen(false), 140); }}
-          onInput=${(e) => { setQuery(e.target.value); setOpen(true); if (value) onPick(null); }}
-          onKeyDown=${(e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((k) => Math.min(candidates.length - 1, k + 1)); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((k) => Math.max(0, k - 1)); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (open && candidates[hi]) choose(candidates[hi]); }
-            else if (e.key === 'Escape') { setOpen(false); }
-          }}
-        />
+        <div className="node-picker__wrap">
+          <input
+            className="node-picker__input"
+            autoComplete="off"
+            spellcheck=${false}
+            value=${open ? query : (picked ? nodeLabel(picked) : query)}
+            placeholder=${placeholder}
+            onFocus=${(e) => { setOpen(true); setQuery(picked ? nodeLabel(picked) : ''); if (e.target.select) e.target.select(); }}
+            onBlur=${() => {
+              window.setTimeout(() => {
+                if (!keepOpenRef.current) setOpen(false);
+              }, 140);
+            }}
+            onInput=${(e) => { setQuery(e.target.value); setOpen(true); if (value) onPick(null); }}
+            onKeyDown=${(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((k) => Math.min(candidates.length - 1, k + 1)); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((k) => Math.max(0, k - 1)); }
+              else if (e.key === 'Enter') { e.preventDefault(); if (open && candidates[hi]) choose(candidates[hi]); }
+              else if (e.key === 'Escape') { setOpen(false); }
+            }}
+          />
+          ${onAddNode ? html`
+            <button
+              type="button"
+              className="node-picker__add"
+              title=${addLabel}
+              onMouseDown=${handleAddMouseDown}
+              onClick=${handleAddClick}
+            >${addLabel}</button>` : null}
+        </div>
         ${open ? html`
           <div className="node-picker__list">
             ${candidates.length === 0
@@ -1253,20 +1279,43 @@
     const onClose = props.onClose;
     const nodes = props.nodes || [];
     const onSubmit = props.onSubmit;
+    const onAddNode = props.onAddNode;
     const zh = (props.locale || 'zh') === 'zh';
     const [source, setSource] = useState(null);
     const [target, setTarget] = useState(null);
     const [relType, setRelType] = useState('binds');
     useEffect(() => {
-      if (open) { setSource(null); setTarget(null); setRelType('binds'); }
+      if (open) { setSource(props.valueSource || null); setTarget(props.valueTarget || null); setRelType('binds'); }
     }, [open]);
+    useEffect(() => {
+      if (open && props.valueSource) setSource(props.valueSource);
+    }, [props.valueSource, open]);
+    useEffect(() => {
+      if (open && props.valueTarget) setTarget(props.valueTarget);
+    }, [props.valueTarget, open]);
     if (!open) return null;
     const same = source && target && source === target;
     const canSubmit = Boolean(source) && Boolean(target) && !same;
+    const handleAddForSource = (suggestedName) => {
+      if (!onAddNode) return;
+      const id = window.prompt(zh ? '新节点 ID' : 'New node id', suggestedName) || '';
+      if (!id) return;
+      const kind = window.prompt(zh ? '节点类型' : 'Node kind', 'account') || 'account';
+      const name = window.prompt(zh ? '节点名称' : 'Node name', suggestedName) || suggestedName;
+      onAddNode({ id, kind, name, autoPick: 'source' });
+    };
+    const handleAddForTarget = (suggestedName) => {
+      if (!onAddNode) return;
+      const id = window.prompt(zh ? '新节点 ID' : 'New node id', suggestedName) || '';
+      if (!id) return;
+      const kind = window.prompt(zh ? '节点类型' : 'Node kind', 'account') || 'account';
+      const name = window.prompt(zh ? '节点名称' : 'Node name', suggestedName) || suggestedName;
+      onAddNode({ id, kind, name, autoPick: 'target' });
+    };
     return html`
       <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <div className="modal rel-modal">
-          <div className="panel__title">${zh ? '// 新增关系 · 连接两个已有节点' : '// ADD RELATION · LINK TWO NODES'}</div>
+          <div className="panel__title">${zh ? '// 新增关系 · 连接两个节点' : '// ADD RELATION · LINK TWO NODES'}</div>
           <div className="rel-form">
             <div className="rel-field">
               <span className="rel-field__label">${zh ? '起点节点 SOURCE' : 'SOURCE NODE'}</span>
@@ -1276,6 +1325,8 @@
                 excludeId=${target}
                 placeholder=${zh ? '输入名称 / id 搜索并选择起点…' : 'Search source node…'}
                 onPick=${setSource}
+                onAddNode=${handleAddForSource}
+                addLabel=${zh ? '+新增' : '+New'}
               />
             </div>
             <div className="rel-bridge" aria-hidden="true">── ${relType} ──▶</div>
@@ -1287,6 +1338,8 @@
                 excludeId=${source}
                 placeholder=${zh ? '输入名称 / id 搜索并选择终点…' : 'Search target node…'}
                 onPick=${setTarget}
+                onAddNode=${handleAddForTarget}
+                addLabel=${zh ? '+新增' : '+New'}
               />
             </div>
             <div className="rel-field">
@@ -1578,12 +1631,13 @@
         const selectedNodeId = _rs.selectedNodeId;
         const highlightIds = _rs.highlightIds;
         const hasSelection = selectedNodeId != null;
-        const activeNodeIds = hasSelection ? new Set([selectedNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
-        const isActiveNode = (d) => !hasSelection
+        const isYouSelected = selectedNodeId != null && selectedNodeId === youNodeId;
+        const activeNodeIds = (hasSelection && !isYouSelected) ? new Set([selectedNodeId, ...(highlightIds ? [...highlightIds] : [])]) : null;
+        const isActiveNode = (d) => (!hasSelection || isYouSelected)
           ? defaultCoreIds.has(d.id)
           : (activeNodeIds && activeNodeIds.has(d.id));
         const isActiveLink = (d) => {
-          if (hasSelection) {
+          if (hasSelection && !isYouSelected) {
             return idOf(d.source) === selectedNodeId || idOf(d.target) === selectedNodeId;
           }
           const fromYou = idOf(d.source) === youNodeId;
@@ -1973,6 +2027,8 @@
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
     const [addRelOpen, setAddRelOpen] = useState(false);
+    const [addRelSource, setAddRelSource] = useState(null);
+    const [addRelTarget, setAddRelTarget] = useState(null);
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
     const [bootFading, setBootFading] = useState(false);
@@ -2175,19 +2231,36 @@
       setIsDetailsOpen(false);
     }, []);
 
-    const handleAddNode = async () => {
-      const id = window.prompt(t('nodeIdPrompt'));
+    const handleAddNode = async (payload) => {
+      let id, kind, name, autoPick;
+      if (payload && typeof payload === 'object') {
+        id = payload.id;
+        kind = payload.kind || 'account';
+        name = payload.name;
+        autoPick = payload.autoPick;
+      } else {
+        id = window.prompt(t('nodeIdPrompt'));
+        if (!id) return;
+        kind = window.prompt(t('nodeKindPrompt'), 'account') || 'account';
+        name = window.prompt(t('nodeNamePrompt'));
+        if (!name) return;
+      }
       if (!id) return;
-      const kind = window.prompt(t('nodeKindPrompt'), 'account') || 'account';
-      const name = window.prompt(t('nodeNamePrompt'));
-      if (!name) return;
       const node = { id: id, kind: kind, name: name };
       try {
         await createNode(node);
       } catch {
-        // local fallback
       }
-      setGraph((prev) => ({ ...prev, nodes: dedupeById([...prev.nodes, node]) }));
+      setGraph((prev) => {
+        const exists = prev.nodes.some((n) => n.id === node.id);
+        if (exists) return prev;
+        return { ...prev, nodes: dedupeById([...prev.nodes, node]) };
+      });
+      if (autoPick === 'source') {
+        setAddRelSource(node.id);
+      } else if (autoPick === 'target') {
+        setAddRelTarget(node.id);
+      }
     };
 
     const handleCreateRelationship = async (payload) => {
@@ -2256,7 +2329,7 @@
           t=${t}
           onToggleLanguage=${() => setLocale((current) => (current === 'zh' ? 'en' : 'zh'))}
           onAddNode=${handleAddNode}
-          onAddRelationship=${() => setAddRelOpen(true)}
+          onAddRelationship=${() => { setAddRelSource(null); setAddRelTarget(null); setAddRelOpen(true); }}
           onImport=${() => setImportOpen(true)}
           onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
           onToggleDetails=${() => setIsDetailsOpen((open) => !open)}
@@ -2337,6 +2410,9 @@
           onClose=${() => setAddRelOpen(false)}
           nodes=${graph.nodes}
           onSubmit=${handleCreateRelationship}
+          onAddNode=${handleAddNode}
+          valueSource=${addRelSource}
+          valueTarget=${addRelTarget}
           locale=${locale}
         />
 
