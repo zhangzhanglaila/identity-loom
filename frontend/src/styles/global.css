@@ -698,6 +698,118 @@ button, input, textarea {
   white-space: nowrap;
 }
 
+/* ===== First-load "INITIALIZING MAP" boot overlay ===== */
+.init-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #050d18;
+  background-image:
+    radial-gradient(120% 80% at 50% 0%, rgba(150, 224, 247, 0.12), rgba(150, 224, 247, 0) 60%),
+    repeating-linear-gradient(180deg, rgba(150, 224, 247, 0.055) 0, rgba(150, 224, 247, 0.055) 1px, transparent 1px, transparent 5px);
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.init-overlay--fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Spider-Man dangling from a web line anchored at top center */
+.init-dangle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 0;
+  animation: init-sway 2.8s ease-in-out 0.9s infinite alternate;
+}
+@keyframes init-sway {
+  from { transform: translateX(-50%) rotate(-3deg); }
+  to   { transform: translateX(-50%) rotate(3deg); }
+}
+.init-web {
+  width: 2px;
+  height: 0;
+  background: linear-gradient(180deg, rgba(215, 245, 255, 0.95), rgba(150, 224, 247, 0.5));
+  box-shadow: 0 0 6px rgba(150, 224, 247, 0.6);
+  animation: init-web-drop 0.9s cubic-bezier(0.3, 0.7, 0.3, 1) forwards;
+}
+@keyframes init-web-drop {
+  to { height: 150px; }
+}
+.init-spider {
+  width: 84px;
+  height: 84px;
+  margin-top: -2px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border-radius: 14px;
+  border: 2px solid rgba(150, 224, 247, 0.55);
+  background: #0a111b;
+  box-shadow: 0 0 20px rgba(150, 224, 247, 0.35);
+  opacity: 0;
+  animation: init-spider-in 0.45s ease 0.55s forwards;
+}
+@keyframes init-spider-in {
+  to { opacity: 1; }
+}
+
+.init-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-top: 130px;
+}
+.init-caption {
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  font-size: clamp(16px, 2.4vw, 26px);
+  color: #bfeaff;
+  text-shadow: 0 0 8px rgba(150, 224, 247, 0.55), 0 0 22px rgba(150, 224, 247, 0.28);
+  animation: init-blink 1.15s ease-in-out infinite;
+}
+@keyframes init-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.init-boot {
+  width: min(460px, 82vw);
+  min-height: 132px;
+  font-size: 12px;
+  line-height: 1.8;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+.init-boot__line {
+  opacity: 0;
+  color: rgba(150, 224, 247, 0.72);
+  animation: init-line-in 0.2s ease forwards;
+}
+.init-boot__line--ok { color: #8ff0c4; }
+@keyframes init-line-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .init-dangle,
+  .init-web,
+  .init-spider,
+  .init-caption,
+  .init-boot__line { animation-duration: 0.01ms; }
+  .init-web { height: 150px; }
+  .init-spider,
+  .init-boot__line { opacity: 1; }
+}
+
 .list-view__icon {
   width: 16px;
   height: 16px;

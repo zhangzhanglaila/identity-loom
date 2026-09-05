@@ -1682,6 +1682,33 @@
     }
   }
 
+  const BOOT_LINES = [
+    { text: 'INITIALIZING IDENTITY MAP...', ok: false },
+    { text: 'FETCHING NODES & LINKS [OK]', ok: true },
+    { text: 'WARMING ICON CACHE...', ok: false },
+    { text: 'CALIBRATING FORCE LAYOUT...', ok: false },
+    { text: 'LINKING RELATIONS [OK]', ok: true },
+    { text: 'ALL SYSTEMS NOMINAL - MAP ONLINE', ok: true },
+  ];
+
+  function preloadImageUrls(urls, timeoutMs) {
+    const uniq = Array.from(new Set((urls || []).filter(Boolean)));
+    if (!uniq.length) return Promise.resolve();
+    const loadOne = (u) => new Promise((resolve) => {
+      const img = new Image();
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      img.onload = finish;
+      img.onerror = finish;
+      img.src = u;
+      if (img.complete && img.naturalWidth > 0) finish();
+    });
+    return Promise.race([
+      Promise.all(uniq.map(loadOne)),
+      new Promise((resolve) => { window.setTimeout(resolve, timeoutMs); }),
+    ]);
+  }
+
   function App() {
     const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
@@ -1699,7 +1726,11 @@
     const [importOpen, setImportOpen] = useState(false);
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
+    const [bootFading, setBootFading] = useState(false);
+    const [bootDone, setBootDone] = useState(false);
     const loadRetryRef = useRef(null);
+    const bootStartedRef = useRef(false);
+    const bootTimersRef = useRef([]);
     const neighborReqRef = useRef(0);
     const t = createT(locale);
 
@@ -1776,6 +1807,35 @@
       nodes: filteredGraph.nodes.length,
       relationships: filteredGraph.relationships.length
     }), [filteredGraph]);
+
+    // First-load boot overlay: keep the "INITIALIZING MAP" screen up until node
+    // icons are warmed in the cache (with a hard timeout) and the force layout has
+    // had a moment to settle, so the user never sees icons popping in one by one.
+    useEffect(() => {
+      if (bootDone || bootStartedRef.current) return;
+      if (dataState !== 'ready' || !Array.isArray(filteredGraph.nodes) || filteredGraph.nodes.length === 0) return;
+      bootStartedRef.current = true;
+      const startedAt = Date.now();
+      const minVisibleMs = 1400;
+      const iconUrls = filteredGraph.nodes.map((n) => iconUrlForNode(n));
+      let cancelled = false;
+      preloadImageUrls(iconUrls, 4200).then(() => {
+        if (cancelled) return;
+        const rest = Math.max(0, minVisibleMs - (Date.now() - startedAt));
+        const t1 = window.setTimeout(() => {
+          if (cancelled) return;
+          setBootFading(true);
+          const t2 = window.setTimeout(() => { if (!cancelled) setBootDone(true); }, 650);
+          bootTimersRef.current.push(t2);
+        }, rest);
+        bootTimersRef.current.push(t1);
+      });
+      return () => {
+        cancelled = true;
+        bootTimersRef.current.forEach((tid) => window.clearTimeout(tid));
+        bootTimersRef.current = [];
+      };
+    }, [bootDone, dataState, filteredGraph.nodes]);
 
     const searchMessage = searchState === 'empty'
       ? t('noSearchResults')
@@ -2011,6 +2071,24 @@
           locale=${locale}
           t=${t}
         />
+
+        ${!bootDone && (dataState === 'loading' || dataState === 'ready') ? html`
+          <div className=${'init-overlay' + (bootFading ? ' init-overlay--fading' : '')} role="status" aria-label="Initializing map">
+            <div className="init-dangle" aria-hidden="true">
+              <div className="init-web"></div>
+              <img className="init-spider" src=${spideyAvatarUrl} alt="" draggable="false" />
+            </div>
+            <div className="init-body">
+              <div className="init-caption">INITIALIZING MAP...</div>
+              <div className="init-boot">
+                ${BOOT_LINES.map((line, idx) => html`<div
+                    key=${idx}
+                    className=${'init-boot__line' + (line.ok ? ' init-boot__line--ok' : '')}
+                    style=${{ animationDelay: `${350 + idx * 190}ms` }}
+                  >${line.text}</div>`)}
+              </div>
+            </div>
+          </div>` : null}
       </div>
     `;
   }
