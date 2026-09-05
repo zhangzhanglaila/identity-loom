@@ -1364,12 +1364,17 @@
       });
 
       // ---- 入场动画: 从中心 YOU 向外的波纹弹出(<1s), 仅在遮罩淡出时播放 ----
-      const INTRO_MS = 620;          // 单个节点自身的弹出时长
-      const INTRO_MAX_DELAY = 260;   // 最外圈相对中心的最大延迟, 形成由内向外的扩散波
-      const INTRO_START_DELAY = 360; // 等不透明遮罩淡出到将尽时再开始弹出, 避免动画被遮罩挡住
+      // YOU 先"咚"地落下, 落定前后其余节点再从中心向外波纹扩散
+      const YOU_DROP_MS = 280;     // YOU 坠落 + 落地回弹时长
+      const RIPPLE_HOLD = 190;     // 其余节点扩散起点相对动画起点的延迟(与 YOU 落定略重叠)
+      const INTRO_MS = 540;        // 单个普通节点自身的弹出时长
+      const INTRO_MAX_DELAY = 240; // 最外圈相对扩散起点的最大延迟
+      const INTRO_START_DELAY = 580; // 对齐遮罩刚消失的时刻再开始, 保证 YOU 坠落全程可见
+      const INTRO_TOTAL = RIPPLE_HOLD + INTRO_MAX_DELAY + INTRO_MS;
       let introStartTs = -1; // -1 = 尚未开始, 按已完成状态绘制
       let introRaf = 0;
       let introMaxDist = 560;
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
       const easeOutQuad = (v) => 1 - (1 - v) * (1 - v);
       const easeOutBack = (v) => {
         if (v <= 0) return 0;
@@ -1379,17 +1384,26 @@
         return 1 + c3 * Math.pow(v - 1, 3) + c1 * Math.pow(v - 1, 2);
       };
       const introElapsed = () => (introStartTs < 0
-        ? INTRO_MS + INTRO_MAX_DELAY
+        ? INTRO_TOTAL
         : (typeof performance !== 'undefined' ? performance.now() : Date.now()) - introStartTs);
       const nodeIntro = (node) => {
         const elapsed = introElapsed();
-        if (elapsed >= INTRO_MS + INTRO_MAX_DELAY) return { scale: 1, alpha: 1 };
+        if (elapsed >= INTRO_TOTAL) return { scale: 1, alpha: 1, dropY: 0 };
+        // 中心 YOU: 从上方坠落 + 落地回弹("咚")
+        if (rootNode && node.id === rootNode.id) {
+          const local = clamp01(elapsed / YOU_DROP_MS);
+          return {
+            scale: 0.72 + 0.28 * easeOutBack(local),
+            alpha: easeOutQuad(local),
+            dropY: -64 * (1 - easeOutQuad(local)),
+          };
+        }
         const rx = rootNode && rootNode.x != null ? rootNode.x : width / 2;
         const ry = rootNode && rootNode.y != null ? rootNode.y : height / 2;
         const dist = Math.hypot((node.x == null ? rx : node.x) - rx, (node.y == null ? ry : node.y) - ry);
-        const delay = Math.min(1, dist / introMaxDist) * INTRO_MAX_DELAY;
-        const local = Math.max(0, Math.min(1, (elapsed - delay) / INTRO_MS));
-        return { scale: easeOutBack(local), alpha: easeOutQuad(local) };
+        const delay = RIPPLE_HOLD + Math.min(1, dist / introMaxDist) * INTRO_MAX_DELAY;
+        const local = clamp01((elapsed - delay) / INTRO_MS);
+        return { scale: easeOutBack(local), alpha: easeOutQuad(local), dropY: 0 };
       };
       const startIntro = () => {
         // 按当前布局到 YOU 的真实最大半径归一化, 让波纹从中心均匀扩散到最外缘
@@ -1406,7 +1420,7 @@
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
           if (renderFnRef.current) renderFnRef.current();
-          if (introElapsed() < INTRO_MS + INTRO_MAX_DELAY + 50) {
+          if (introElapsed() < INTRO_TOTAL + 50) {
             introRaf = requestAnimationFrame(loop);
           } else {
             introStartTs = -1;
@@ -1447,14 +1461,16 @@
 
         processed.links.forEach((link) => {
           const sx = link.source?.x;
-          const sy = link.source?.y;
+          const sy0 = link.source?.y;
           const tx = link.target?.x;
-          const ty = link.target?.y;
-          if (sx == null || sy == null || tx == null || ty == null) return;
+          const ty0 = link.target?.y;
+          if (sx == null || sy0 == null || tx == null || ty0 == null) return;
           const active = isActiveLink(link);
-          const aIn = link.source && typeof link.source === 'object' ? nodeIntro(link.source).alpha : 1;
-          const bIn = link.target && typeof link.target === 'object' ? nodeIntro(link.target).alpha : 1;
-          const linkIn = Math.min(aIn, bIn);
+          const aIntro = link.source && typeof link.source === 'object' ? nodeIntro(link.source) : { alpha: 1, dropY: 0 };
+          const bIntro = link.target && typeof link.target === 'object' ? nodeIntro(link.target) : { alpha: 1, dropY: 0 };
+          const linkIn = Math.min(aIntro.alpha, bIntro.alpha);
+          const sy = sy0 + (aIntro.dropY || 0);
+          const ty = ty0 + (bIntro.dropY || 0);
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           const dx = tx - sx;
@@ -1489,12 +1505,13 @@
           if (x == null || y == null) return;
 
           const intro = nodeIntro(node);
+          const dropY = intro.dropY || 0;
           ctx.save();
           ctx.globalAlpha = (active ? 1 : 0.22) * intro.alpha;
-          if (intro.scale !== 1) {
-            ctx.translate(x, y);
+          if (intro.scale !== 1 || dropY !== 0) {
+            ctx.translate(x, y + dropY);
             ctx.scale(intro.scale, intro.scale);
-            ctx.translate(-x, -y);
+            ctx.translate(-x, -(y + dropY));
           }
           if (node.id === selectedNodeId) {
             ctx.beginPath();
@@ -1528,6 +1545,19 @@
             ctx.fill();
           }
 
+          // YOU "咚"落地瞬间的冲击波光环
+          if (rootNode && node.id === rootNode.id && introStartTs >= 0) {
+            const slam = clamp01((introElapsed() - YOU_DROP_MS) / 230);
+            if (slam > 0 && slam < 1) {
+              ctx.beginPath();
+              ctx.globalAlpha = (1 - slam) * 0.55;
+              ctx.strokeStyle = '#96e0f7';
+              ctx.lineWidth = 2.2 * (1 - slam) + 0.4;
+              ctx.arc(x, y + dropY, r + 6 + slam * 36, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+
           ctx.restore();
 
           const shouldLabel = hasSelection
@@ -1553,7 +1583,7 @@
             ctx.font = node.kind === 'you' ? '800 13px Inter, sans-serif' : '700 11px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillStyle = node.kind === 'account' ? '#cfe7ff' : (node.id === selectedNodeId ? '#ffffff' : '#d7ecff');
-            ctx.fillText(label, x, y + r + 14);
+            ctx.fillText(label, x, y + dropY + r + 14);
             ctx.restore();
           }
         });
