@@ -1180,6 +1180,7 @@
     const selectedNodeId = props.selectedNodeId;
     const focusNodeId = props.focusNodeId;
     const focusNonce = props.focusNonce;
+    const enterNonce = props.enterNonce;
     const highlightIds = props.highlightIds;
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
@@ -1193,6 +1194,7 @@
     const selectionStateRef = useRef({ selectedNodeId: null, focusNodeId: null, highlightIds: null });
     const renderFnRef = useRef(null);
     const focusFnRef = useRef(null);
+    const enterFnRef = useRef(null);
     const effectIdRef = useRef(0);
 
     const processed = useMemo(() => {
@@ -1245,6 +1247,13 @@
       timer = setTimeout(tryFocus, 80);
       return () => { if (timer) clearTimeout(timer); };
     }, [focusNodeId, focusNonce]);
+
+    // 加载遮罩开始淡出时, 播放一次节点入场动画(从 YOU 向外波纹弹出)
+    useEffect(() => {
+      if (!enterNonce) return undefined;
+      const t = window.setTimeout(() => { if (enterFnRef.current) enterFnRef.current(); }, 40);
+      return () => window.clearTimeout(t);
+    }, [enterNonce]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -1354,6 +1363,59 @@
         linked.set(key, link);
       });
 
+      // ---- 入场动画: 从中心 YOU 向外的波纹弹出(<1s), 仅在遮罩淡出时播放 ----
+      const INTRO_MS = 620;          // 单个节点自身的弹出时长
+      const INTRO_MAX_DELAY = 260;   // 最外圈相对中心的最大延迟, 形成由内向外的扩散波
+      const INTRO_START_DELAY = 360; // 等不透明遮罩淡出到将尽时再开始弹出, 避免动画被遮罩挡住
+      let introStartTs = -1; // -1 = 尚未开始, 按已完成状态绘制
+      let introRaf = 0;
+      let introMaxDist = 560;
+      const easeOutQuad = (v) => 1 - (1 - v) * (1 - v);
+      const easeOutBack = (v) => {
+        if (v <= 0) return 0;
+        if (v >= 1) return 1;
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(v - 1, 3) + c1 * Math.pow(v - 1, 2);
+      };
+      const introElapsed = () => (introStartTs < 0
+        ? INTRO_MS + INTRO_MAX_DELAY
+        : (typeof performance !== 'undefined' ? performance.now() : Date.now()) - introStartTs);
+      const nodeIntro = (node) => {
+        const elapsed = introElapsed();
+        if (elapsed >= INTRO_MS + INTRO_MAX_DELAY) return { scale: 1, alpha: 1 };
+        const rx = rootNode && rootNode.x != null ? rootNode.x : width / 2;
+        const ry = rootNode && rootNode.y != null ? rootNode.y : height / 2;
+        const dist = Math.hypot((node.x == null ? rx : node.x) - rx, (node.y == null ? ry : node.y) - ry);
+        const delay = Math.min(1, dist / introMaxDist) * INTRO_MAX_DELAY;
+        const local = Math.max(0, Math.min(1, (elapsed - delay) / INTRO_MS));
+        return { scale: easeOutBack(local), alpha: easeOutQuad(local) };
+      };
+      const startIntro = () => {
+        // 按当前布局到 YOU 的真实最大半径归一化, 让波纹从中心均匀扩散到最外缘
+        let md = 1;
+        if (rootNode && rootNode.x != null) {
+          processed.nodes.forEach((n) => {
+            if (n.x == null) return;
+            md = Math.max(md, Math.hypot(n.x - rootNode.x, n.y - rootNode.y));
+          });
+        }
+        introMaxDist = md;
+        // 时间轴后移: 遮罩淡出前期节点保持全隐, 将尽时(约360ms)才开始由内向外弹出
+        introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + INTRO_START_DELAY;
+        if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
+        const loop = () => {
+          if (renderFnRef.current) renderFnRef.current();
+          if (introElapsed() < INTRO_MS + INTRO_MAX_DELAY + 50) {
+            introRaf = requestAnimationFrame(loop);
+          } else {
+            introStartTs = -1;
+            if (renderFnRef.current) renderFnRef.current();
+          }
+        };
+        if (typeof requestAnimationFrame !== 'undefined') introRaf = requestAnimationFrame(loop);
+      };
+
       const render = () => {
         const _rs = selectionStateRef.current;
         const selectedNodeId = _rs.selectedNodeId;
@@ -1390,12 +1452,15 @@
           const ty = link.target?.y;
           if (sx == null || sy == null || tx == null || ty == null) return;
           const active = isActiveLink(link);
+          const aIn = link.source && typeof link.source === 'object' ? nodeIntro(link.source).alpha : 1;
+          const bIn = link.target && typeof link.target === 'object' ? nodeIntro(link.target).alpha : 1;
+          const linkIn = Math.min(aIn, bIn);
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           const dx = tx - sx;
           const dy = ty - sy;
           const dr = Math.sqrt(dx * dx + dy * dy) * 0.82;
-          ctx.strokeStyle = active ? 'rgba(150, 224, 247, 0.56)' : 'rgba(150, 224, 247, 0.16)';
+          ctx.strokeStyle = 'rgba(150, 224, 247, ' + ((active ? 0.56 : 0.16) * linkIn).toFixed(3) + ')';
           ctx.lineWidth = active ? 1.6 : 0.7;
           ctx.quadraticCurveTo((sx + tx) / 2, (sy + ty) / 2 - dr * 0.06, tx, ty);
           ctx.stroke();
@@ -1423,8 +1488,14 @@
           const y = node.y;
           if (x == null || y == null) return;
 
+          const intro = nodeIntro(node);
           ctx.save();
-          ctx.globalAlpha = active ? 1 : 0.22;
+          ctx.globalAlpha = (active ? 1 : 0.22) * intro.alpha;
+          if (intro.scale !== 1) {
+            ctx.translate(x, y);
+            ctx.scale(intro.scale, intro.scale);
+            ctx.translate(-x, -y);
+          }
           if (node.id === selectedNodeId) {
             ctx.beginPath();
             ctx.arc(x, y, r + 7, 0, Math.PI * 2);
@@ -1478,6 +1549,7 @@
               ? baseLabel + ' (' + node.memberCount + ')'
               : baseLabel;
             ctx.save();
+            ctx.globalAlpha = intro.alpha;
             ctx.font = node.kind === 'you' ? '800 13px Inter, sans-serif' : '700 11px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillStyle = node.kind === 'account' ? '#cfe7ff' : (node.id === selectedNodeId ? '#ffffff' : '#d7ecff');
@@ -1509,6 +1581,7 @@
       };
       simulation.on('tick', ticked);
       renderFnRef.current = render;
+      enterFnRef.current = startIntro;
 
       // 将指定节点平滑居中(供搜索聚焦), 节点坐标未就绪时返回 false 由外层重试
       const focusNodeById = (id) => {
@@ -1636,9 +1709,11 @@
       resizeObserver.observe(container);
 
       return () => {
+        if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         simulation.stop();
         renderFnRef.current = null;
         focusFnRef.current = null;
+        enterFnRef.current = null;
         resizeObserver.disconnect();
         canvas.removeEventListener('pointerdown', onPointerDown);
         canvas.removeEventListener('pointermove', onPointerMove);
@@ -1728,6 +1803,7 @@
     const [searchState, setSearchState] = useState('idle');
     const [bootFading, setBootFading] = useState(false);
     const [bootDone, setBootDone] = useState(false);
+    const [enterNonce, setEnterNonce] = useState(0);
     const loadRetryRef = useRef(null);
     const bootStartedRef = useRef(false);
     const bootTimersRef = useRef([]);
@@ -1825,6 +1901,7 @@
         const t1 = window.setTimeout(() => {
           if (cancelled) return;
           setBootFading(true);
+          setEnterNonce(Date.now());
           const t2 = window.setTimeout(() => { if (!cancelled) setBootDone(true); }, 650);
           bootTimersRef.current.push(t2);
         }, rest);
@@ -2030,6 +2107,7 @@
                     selectedNodeId=${selectedNode?.id}
                     focusNodeId=${focusReq.id}
                     focusNonce=${focusReq.nonce}
+                    enterNonce=${enterNonce}
                     highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
