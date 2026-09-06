@@ -106,13 +106,15 @@ class Neo4jStore:
             result = session.run(
                 """
                 MATCH (n:GraphNode)
-                WHERE toLower(coalesce(n.name, '')) CONTAINS toLower($query)
+                WHERE toLower(coalesce(n.id, '')) CONTAINS toLower($query)
+                   OR toLower(coalesce(n.name, '')) CONTAINS toLower($query)
                    OR toLower(coalesce(n.display_name, '')) CONTAINS toLower($query)
                    OR toLower(coalesce(n.username, '')) CONTAINS toLower($query)
                    OR toLower(coalesce(n.email, '')) CONTAINS toLower($query)
                    OR toLower(coalesce(n.phone, '')) CONTAINS toLower($query)
+                   OR toLower(coalesce(n.platform, '')) CONTAINS toLower($query)
                 RETURN n
-                ORDER BY n.name
+                ORDER BY CASE WHEN toLower(n.id) = toLower($query) THEN 0 WHEN n.name CONTAINS $query THEN 1 ELSE 2 END, n.name
                 LIMIT 50
                 """,
                 {"query": query},
