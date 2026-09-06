@@ -1409,6 +1409,87 @@
       </div>`;
   }
 
+  function AddNodeDialog(props) {
+    const open = props.open;
+    const onClose = props.onClose;
+    const nodes = props.nodes || [];
+    const onSubmit = props.onSubmit;
+    const zh = (props.locale || 'zh') === 'zh';
+    const [id, setId] = useState('');
+    const [kind, setKind] = useState('account');
+    const [name, setName] = useState('');
+    const idRef = useRef(null);
+    const KINDS = ['account', 'provider', 'platform', 'identifier', 'tag'];
+    useEffect(() => {
+      if (open) {
+        setId(''); setKind('account'); setName('');
+        window.setTimeout(() => { if (idRef.current) idRef.current.focus(); }, 50);
+      }
+    }, [open]);
+    if (!open) return null;
+    const idTrimmed = id.trim();
+    const exists = idTrimmed && nodes.some((n) => n.id === idTrimmed);
+    const canSubmit = Boolean(idTrimmed) && !exists;
+    return html`
+      <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal node-modal">
+          <div className="panel__title">${zh ? '// 新增节点' : '// ADD NODE'}</div>
+          <form
+            className="rel-form"
+            onSubmit=${(e) => {
+              e.preventDefault();
+              if (!canSubmit) return;
+              onSubmit({ id: idTrimmed, kind: kind, name: name.trim() || idTrimmed });
+              onClose();
+            }}
+          >
+            <div className="rel-field">
+              <span className="rel-field__label">ID</span>
+              <input
+                ref=${idRef}
+                className="node-picker__add-input"
+                style=${{ width: '100%' }}
+                value=${id}
+                onChange=${(e) => setId(e.target.value)}
+                placeholder=${zh ? '唯一标识, 如 github_user_xxx' : 'Unique id'}
+                autoComplete="off"
+                spellcheck=${false}
+              />
+              ${exists ? html`<div className="node-picker__add-err">${zh ? '该 ID 已存在' : 'ID already exists'}</div>` : null}
+            </div>
+            <div className="rel-field">
+              <span className="rel-field__label">${zh ? '类型 KIND' : 'NODE KIND'}</span>
+              <div className="rel-types">
+                ${KINDS.map((k) => html`
+                  <button
+                    type="button"
+                    key=${k}
+                    className=${'rel-type' + (kind === k ? ' is-active' : '')}
+                    onClick=${() => setKind(k)}
+                  >${k}</button>`)}
+              </div>
+            </div>
+            <div className="rel-field">
+              <span className="rel-field__label">${zh ? '名称 NAME (可选)' : 'NAME (optional)'}</span>
+              <input
+                className="node-picker__add-input"
+                style=${{ width: '100%' }}
+                value=${name}
+                onChange=${(e) => setName(e.target.value)}
+                placeholder=${zh ? '显示名称, 留空则使用 ID' : 'Display name, defaults to id'}
+                autoComplete="off"
+                spellcheck=${false}
+              />
+            </div>
+            <div className="modal__actions">
+              <button className="toolbar__button" type="button" onClick=${onClose}>${zh ? '取消' : 'Cancel'}</button>
+              <button className="toolbar__button rel-submit" type="submit" disabled=${!canSubmit}>${zh ? '创 建' : 'CREATE'}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  }
+
   function GraphCanvas(props) {
     const nodes = props.nodes;
     const relationships = props.relationships;
@@ -2066,6 +2147,7 @@
     const [selectedRelationship, setSelectedRelationship] = useState(null);
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
+    const [addNodeOpen, setAddNodeOpen] = useState(false);
     const [addRelOpen, setAddRelOpen] = useState(false);
     const [addRelSource, setAddRelSource] = useState(null);
     const [addRelTarget, setAddRelTarget] = useState(null);
@@ -2272,19 +2354,11 @@
     }, []);
 
     const handleAddNode = async (payload) => {
-      let id, kind, name, autoPick;
-      if (payload && typeof payload === 'object') {
-        id = payload.id;
-        kind = payload.kind || 'account';
-        name = payload.name;
-        autoPick = payload.autoPick;
-      } else {
-        id = window.prompt(t('nodeIdPrompt'));
-        if (!id) return;
-        kind = window.prompt(t('nodeKindPrompt'), 'account') || 'account';
-        name = window.prompt(t('nodeNamePrompt'));
-        if (!name) return;
-      }
+      if (!payload || typeof payload !== 'object') return;
+      const id = payload.id;
+      const kind = payload.kind || 'account';
+      const name = payload.name;
+      const autoPick = payload.autoPick;
       if (!id) return;
       const node = { id: id, kind: kind, name: name };
       try {
@@ -2368,7 +2442,7 @@
           locale=${locale}
           t=${t}
           onToggleLanguage=${() => setLocale((current) => (current === 'zh' ? 'en' : 'zh'))}
-          onAddNode=${handleAddNode}
+          onAddNode=${() => setAddNodeOpen(true)}
           onAddRelationship=${() => { setAddRelSource(null); setAddRelTarget(null); setAddRelOpen(true); }}
           onImport=${() => setImportOpen(true)}
           onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
@@ -2443,6 +2517,14 @@
           onImportCsv=${handleImportCsv}
           locale=${locale}
           t=${t}
+        />
+
+        <${AddNodeDialog}
+          open=${addNodeOpen}
+          onClose=${() => setAddNodeOpen(false)}
+          nodes=${graph.nodes}
+          onSubmit=${handleAddNode}
+          locale=${locale}
         />
 
         <${AddRelationDialog}
