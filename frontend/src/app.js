@@ -2009,6 +2009,7 @@
         const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
         if (node) {
           onSelectNode(node);
+          if (focusFnRef.current) focusFnRef.current(node.id);
           return;
         }
         const [px, py] = transform.invert([event.clientX - rect.left, event.clientY - rect.top]);
