@@ -961,6 +961,36 @@ svg text {
 .node-picker__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .node-picker__id { margin-left: auto; font-size: 10px; color: var(--muted); white-space: nowrap; }
 .node-picker__empty { padding: 10px 12px; color: var(--muted); font-size: 12px; }
+.node-picker__add.is-active { border-color: var(--accent-2); color: var(--accent-2); background: rgba(255, 92, 85, .12); box-shadow: 0 0 10px rgba(255, 92, 85, .4); text-shadow: 0 0 8px rgba(255, 92, 85, .8); }
+.node-picker__add-form {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60;
+  display: grid; gap: 6px; padding: 10px;
+  background: #07142a; border: 1px solid var(--accent); box-shadow: var(--glow-strong);
+}
+.node-picker__add-row { display: flex; gap: 6px; align-items: stretch; }
+.node-picker__add-input {
+  flex: 1; min-width: 0; border: 1px solid var(--line); background: #060f22;
+  color: var(--text); padding: 6px 10px; outline: none; font-size: 12px;
+}
+.node-picker__add-input:focus { border-color: var(--accent); box-shadow: var(--glow); }
+.node-picker__add-select {
+  border: 1px solid var(--line); background: #0c1c38; color: var(--text);
+  padding: 6px 8px; font-size: 12px; outline: none; cursor: pointer;
+}
+.node-picker__add-select:focus { border-color: var(--accent); box-shadow: var(--glow); }
+.node-picker__add-confirm {
+  border: 1px solid var(--accent); background: #0c1c38; color: var(--accent);
+  padding: 6px 14px; cursor: pointer; font-size: 12px; letter-spacing: 1px;
+  box-shadow: var(--glow);
+}
+.node-picker__add-confirm:hover:not(:disabled) { background: rgba(150, 224, 247, .15); }
+.node-picker__add-confirm:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.node-picker__add-cancel {
+  border: 1px solid var(--line); background: #0c1c38; color: var(--muted);
+  padding: 6px 10px; cursor: pointer; font-size: 12px;
+}
+.node-picker__add-cancel:hover { color: var(--danger); border-color: var(--danger); }
+.node-picker__add-err { color: var(--danger); font-size: 11px; letter-spacing: .5px; }
 .rel-types { display: flex; flex-wrap: wrap; gap: 8px; }
 .rel-type {
   border: 1px solid var(--line); border-radius: 0; background: #0c1c38;

@@ -1192,7 +1192,12 @@
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [hi, setHi] = useState(0);
+    const [addOpen, setAddOpen] = useState(false);
+    const [addId, setAddId] = useState('');
+    const [addKind, setAddKind] = useState('account');
+    const [addName, setAddName] = useState('');
     const keepOpenRef = useRef(false);
+    const addIdRef = useRef(null);
     const picked = value ? allNodes.find((n) => n.id === value) : null;
     const candidates = useMemo(() => {
       const q = query.trim().toLowerCase();
@@ -1206,20 +1211,36 @@
       return matched.slice(0, 40);
     }, [allNodes, query, excludeId]);
     useEffect(() => { setHi(0); }, [query, open]);
+    useEffect(() => {
+      if (addOpen) {
+        setAddId(query.trim());
+        setAddName(query.trim());
+        window.setTimeout(() => { if (addIdRef.current) addIdRef.current.focus(); }, 50);
+      }
+    }, [addOpen]);
     const choose = (n) => {
       onPick(n ? n.id : null);
       setQuery(n ? nodeLabel(n) : '');
       setOpen(false);
     };
-    const handleAddMouseDown = (e) => {
+    const toggleAdd = (e) => {
       keepOpenRef.current = true;
       e.preventDefault();
-    };
-    const handleAddClick = () => {
-      if (onAddNode) {
-        onAddNode(query.trim());
-      }
+      setOpen(false);
+      setAddOpen((v) => !v);
       window.setTimeout(() => { keepOpenRef.current = false; }, 300);
+    };
+    const submitAdd = (e) => {
+      if (e) e.preventDefault();
+      const id = addId.trim();
+      const name = addName.trim() || id;
+      if (!id) return;
+      if (allNodes.some((n) => n.id === id)) return;
+      if (onAddNode) onAddNode({ id, kind: addKind, name });
+      setAddOpen(false);
+      setAddId('');
+      setAddName('');
+      setAddKind('account');
     };
     return html`
       <div className="node-picker">
@@ -1230,7 +1251,7 @@
             spellcheck=${false}
             value=${open ? query : (picked ? nodeLabel(picked) : query)}
             placeholder=${placeholder}
-            onFocus=${(e) => { setOpen(true); setQuery(picked ? nodeLabel(picked) : ''); if (e.target.select) e.target.select(); }}
+            onFocus=${(e) => { setAddOpen(false); setOpen(true); setQuery(picked ? nodeLabel(picked) : ''); if (e.target.select) e.target.select(); }}
             onBlur=${() => {
               window.setTimeout(() => {
                 if (!keepOpenRef.current) setOpen(false);
@@ -1241,19 +1262,18 @@
               if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((k) => Math.min(candidates.length - 1, k + 1)); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((k) => Math.max(0, k - 1)); }
               else if (e.key === 'Enter') { e.preventDefault(); if (open && candidates[hi]) choose(candidates[hi]); }
-              else if (e.key === 'Escape') { setOpen(false); }
+              else if (e.key === 'Escape') { setOpen(false); setAddOpen(false); }
             }}
           />
           ${onAddNode ? html`
             <button
               type="button"
-              className="node-picker__add"
+              className=${'node-picker__add' + (addOpen ? ' is-active' : '')}
               title=${addLabel}
-              onMouseDown=${handleAddMouseDown}
-              onClick=${handleAddClick}
+              onMouseDown=${toggleAdd}
             >${addLabel}</button>` : null}
         </div>
-        ${open ? html`
+        ${open && !addOpen ? html`
           <div className="node-picker__list">
             ${candidates.length === 0
               ? html`<div className="node-picker__empty">无匹配节点</div>`
@@ -1270,6 +1290,36 @@
                   <span className="node-picker__id">${n.id}</span>
                 </button>`)}
           </div>` : null}
+        ${addOpen ? html`
+          <form className="node-picker__add-form" onSubmit=${submitAdd}>
+            <div className="node-picker__add-row">
+              <input
+                ref=${addIdRef}
+                className="node-picker__add-input"
+                placeholder="ID"
+                value=${addId}
+                onChange=${(e) => setAddId(e.target.value)}
+                autoComplete="off"
+                spellcheck=${false}
+              />
+              <select className="node-picker__add-select" value=${addKind} onChange=${(e) => setAddKind(e.target.value)}>
+                ${['account', 'provider', 'platform', 'identifier', 'tag'].map((k) => html`<option key=${k} value=${k}>${k}</option>`)}
+              </select>
+            </div>
+            <div className="node-picker__add-row">
+              <input
+                className="node-picker__add-input"
+                placeholder="Name"
+                value=${addName}
+                onChange=${(e) => setAddName(e.target.value)}
+                autoComplete="off"
+                spellcheck=${false}
+              />
+              <button type="submit" className="node-picker__add-confirm" disabled=${!addId.trim() || allNodes.some((n) => n.id === addId.trim())}>OK</button>
+              <button type="button" className="node-picker__add-cancel" onClick=${() => setAddOpen(false)}>✕</button>
+            </div>
+            ${addId.trim() && allNodes.some((n) => n.id === addId.trim()) ? html`<div className="node-picker__add-err">ID 已存在</div>` : null}
+          </form>` : null}
       </div>`;
   }
 
@@ -1296,21 +1346,11 @@
     if (!open) return null;
     const same = source && target && source === target;
     const canSubmit = Boolean(source) && Boolean(target) && !same;
-    const handleAddForSource = (suggestedName) => {
-      if (!onAddNode) return;
-      const id = window.prompt(zh ? '新节点 ID' : 'New node id', suggestedName) || '';
-      if (!id) return;
-      const kind = window.prompt(zh ? '节点类型' : 'Node kind', 'account') || 'account';
-      const name = window.prompt(zh ? '节点名称' : 'Node name', suggestedName) || suggestedName;
-      onAddNode({ id, kind, name, autoPick: 'source' });
+    const wrapAddForSource = (nodeData) => {
+      if (onAddNode) onAddNode({ ...nodeData, autoPick: 'source' });
     };
-    const handleAddForTarget = (suggestedName) => {
-      if (!onAddNode) return;
-      const id = window.prompt(zh ? '新节点 ID' : 'New node id', suggestedName) || '';
-      if (!id) return;
-      const kind = window.prompt(zh ? '节点类型' : 'Node kind', 'account') || 'account';
-      const name = window.prompt(zh ? '节点名称' : 'Node name', suggestedName) || suggestedName;
-      onAddNode({ id, kind, name, autoPick: 'target' });
+    const wrapAddForTarget = (nodeData) => {
+      if (onAddNode) onAddNode({ ...nodeData, autoPick: 'target' });
     };
     return html`
       <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -1325,7 +1365,7 @@
                 excludeId=${target}
                 placeholder=${zh ? '输入名称 / id 搜索并选择起点…' : 'Search source node…'}
                 onPick=${setSource}
-                onAddNode=${handleAddForSource}
+                onAddNode=${wrapAddForSource}
                 addLabel=${zh ? '+新增' : '+New'}
               />
             </div>
@@ -1338,7 +1378,7 @@
                 excludeId=${source}
                 placeholder=${zh ? '输入名称 / id 搜索并选择终点…' : 'Search target node…'}
                 onPick=${setTarget}
-                onAddNode=${handleAddForTarget}
+                onAddNode=${wrapAddForTarget}
                 addLabel=${zh ? '+新增' : '+New'}
               />
             </div>
