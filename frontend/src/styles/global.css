@@ -1044,3 +1044,119 @@ svg text {
 .node-modal input::placeholder { color: #9ca3af; }
 .node-modal input:focus,
 .node-modal select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
+
+/* ===== 节点编辑 / 右键菜单 / 删除确认 ===== */
+
+/* 详情面板标题右侧按钮组: 编辑 + 关闭 */
+.panel__heading-actions { display: flex; align-items: center; gap: 8px; }
+.panel__edit {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--text);
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: border-color .15s, color .15s;
+}
+.panel__edit:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 右键节点上下文菜单 */
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.ctx-menu {
+  position: fixed;
+  min-width: 132px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ctx-menu__title {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  padding: 6px 10px 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctx-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #374151;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: background .12s, color .12s;
+}
+.ctx-menu__item:hover { background: #eff6ff; color: #3b82f6; }
+.ctx-menu__item--danger { color: #ef4444; }
+.ctx-menu__item--danger:hover { background: #fef2f2; color: #dc2626; }
+.ctx-menu__icon { font-size: 12px; width: 14px; text-align: center; }
+
+/* 详情面板内联编辑表单 */
+.detail-edit { display: grid; gap: 12px; }
+.detail-edit__field { display: grid; gap: 5px; text-align: left; }
+.detail-edit__label {
+  font-size: 11px; letter-spacing: 1.2px; color: #9ca3af; font-weight: 600;
+}
+.detail-edit__input {
+  border: 1px solid #d1d5db; border-radius: 6px;
+  background: #ffffff; color: #333333;
+  padding: 8px 10px; font-size: 13px; outline: none;
+  width: 100%; box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.detail-edit__input::placeholder { color: #b6bcc7; }
+.detail-edit__input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
+.detail-edit__input:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+.detail-edit__textarea { resize: vertical; font-family: inherit; min-height: 52px; }
+.detail-edit__kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.detail-edit__kind {
+  border: 1px solid #d1d5db; border-radius: 6px; background: #ffffff;
+  color: #4b5563; padding: 5px 10px; cursor: pointer; font-size: 12px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.detail-edit__kind:hover { border-color: #3b82f6; color: #3b82f6; }
+.detail-edit__kind.is-active { border-color: #3b82f6; color: #ffffff; background: #3b82f6; }
+.detail-edit__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.detail-edit__btn {
+  border: 1px solid #d1d5db; border-radius: 6px;
+  background: #ffffff; color: #4b5563;
+  padding: 7px 18px; cursor: pointer; font-size: 12px; letter-spacing: 1.5px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.detail-edit__btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+.detail-edit__btn--primary {
+  border-color: #3b82f6; background: #3b82f6; color: #ffffff; letter-spacing: 2px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, .3);
+}
+.detail-edit__btn--primary:hover { background: #2563eb; border-color: #2563eb; }
+
+/* 删除确认弹窗 */
+.confirm-modal { max-width: 420px; }
+.confirm-text { color: #374151; font-size: 13px; line-height: 1.7; padding: 4px 0 12px; }
+.confirm-text b { color: #ef4444; word-break: break-all; }
+.confirm-danger {
+  border-color: #ef4444 !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, .3) !important;
+}
+.confirm-danger:hover { background: #dc2626 !important; border-color: #dc2626 !important; box-shadow: 0 4px 12px rgba(239, 68, 68, .4) !important; }

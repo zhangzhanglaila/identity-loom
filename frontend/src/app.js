@@ -43,6 +43,10 @@
       json: 'JSON',
       csv: 'CSV',
       close: '关闭',
+      editNode: '编辑节点',
+      deleteNode: '删除节点',
+      edit: '编辑',
+      delete: '删除',
       loading: '正在加载本地图谱…',
       loadFailed: '无法读取本地图谱，请先启动 Neo4j 和后端服务。',
       emptyGraph: '本地图谱暂无数据。',
@@ -110,6 +114,10 @@
       json: 'JSON',
       csv: 'CSV',
       close: 'Close',
+      editNode: 'Edit Node',
+      deleteNode: 'Delete Node',
+      edit: 'Edit',
+      delete: 'Delete',
       loading: 'Loading local graph…',
       loadFailed: 'Unable to read the local graph. Start Neo4j and the backend first.',
       emptyGraph: 'The local graph has no data yet.',
@@ -761,6 +769,14 @@
     return request('/api/relationships', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  function updateNode(nodeId, payload) {
+    return request('/api/nodes/' + encodeURIComponent(nodeId), { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  function deleteNode(nodeId) {
+    return request('/api/nodes/' + encodeURIComponent(nodeId), { method: 'DELETE' });
+  }
+
   function importJson(payload) {
     return request('/api/import/json', { method: 'POST', body: JSON.stringify(payload) });
   }
@@ -973,17 +989,90 @@
     const graphRelationships = props.graphRelationships || [];
     const onSelectNode = props.onSelectNode;
     const onSelectMember = props.onSelectMember;
+    const onUpdateNode = props.onUpdateNode;
     const locale = props.locale;
     const t = props.t;
     const onClose = props.onClose;
+    const zh = (locale || 'zh') === 'zh';
 
-    const panelHeading = (title, iconNode) => html`
+    // 内联编辑状态: 点击 ✎ 或右键菜单"编辑"后, 详情卡片直接变为可编辑表单
+    const [editing, setEditing] = useState(false);
+    const [form, setForm] = useState(null);
+    const NODE_KINDS = ['account', 'provider', 'platform', 'identifier', 'tag', 'you'];
+    const EDIT_FIELDS = [
+      { key: 'display_name', label: zh ? '显示名称' : 'Display name' },
+      { key: 'platform', label: zh ? '所属平台' : 'Platform' },
+      { key: 'username', label: zh ? '用户名' : 'Username' },
+      { key: 'nickname', label: zh ? '昵称' : 'Nickname' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: zh ? '手机号' : 'Phone' },
+      { key: 'uid', label: 'UID' },
+      { key: 'url', label: 'URL' },
+      { key: 'status', label: zh ? '状态' : 'Status' },
+    ];
+    const nodeId = node?.id;
+    // 切换节点/关系时退出编辑态
+    useEffect(() => { setEditing(false); }, [nodeId, relationship]);
+    // 右键菜单"编辑"信号: 进入编辑态
+    useEffect(() => { if (props.editNonce) setEditing(true); }, [props.editNonce]);
+    // 进入编辑态时用节点当前数据填充表单
+    useEffect(() => {
+      if (editing && node && !node.synthetic) {
+        setForm({
+          kind: node.kind || 'account',
+          name: node.name || '',
+          display_name: node.display_name || '',
+          platform: node.platform || '',
+          username: node.username || '',
+          nickname: node.nickname || '',
+          email: node.email || '',
+          phone: node.phone || '',
+          uid: node.uid || '',
+          url: node.url || '',
+          status: node.status || '',
+          notes: node.notes || '',
+        });
+      }
+    }, [editing, nodeId]);
+
+    const setField = (key, value) => setForm((prev) => ({ ...(prev || {}), [key]: value }));
+    const cancelEdit = () => setEditing(false);
+    const saveEdit = () => {
+      if (!onUpdateNode || !form || !node) return;
+      const clean = (v) => (v || '').trim();
+      onUpdateNode(node.id, {
+        kind: form.kind,
+        name: clean(form.name) || node.id,
+        display_name: clean(form.display_name),
+        platform: clean(form.platform),
+        username: clean(form.username),
+        nickname: clean(form.nickname),
+        email: clean(form.email),
+        phone: clean(form.phone),
+        uid: clean(form.uid),
+        url: clean(form.url),
+        status: clean(form.status),
+        notes: clean(form.notes),
+      });
+      setEditing(false);
+    };
+
+    const panelHeading = (title, iconNode, showEdit) => html`
       <div className="panel__heading">
         <div className="panel__heading-left">
           ${iconNode ? renderNodeIcon(iconNode, 'panel__icon') : null}
           <div className="panel__title">${title}</div>
         </div>
-        <button className="panel__close" onClick=${onClose} title=${t('closePanel')} aria-label=${t('closePanel')}>×</button>
+        <div className="panel__heading-actions">
+          ${showEdit ? html`
+            <button
+              className="panel__edit"
+              onClick=${() => setEditing(true)}
+              title=${t('editNode')}
+              aria-label=${t('editNode')}
+            >✎</button>` : null}
+          <button className="panel__close" onClick=${onClose} title=${t('closePanel')} aria-label=${t('closePanel')}>×</button>
+        </div>
       </div>
     `;
 
@@ -1089,15 +1178,72 @@
     return html`
       <aside className="detail-panel">
         <div className="detail-card">
-          ${panelHeading(title, node)}
-          <div className="detail-list">
+          ${panelHeading(title, node, !editing)}
+          ${editing && form ? html`
+            <div className="detail-edit">
+              <div className="detail-edit__field">
+                <label className="detail-edit__label">ID</label>
+                <input className="detail-edit__input" value=${node.id} disabled readOnly />
+              </div>
+              <div className="detail-edit__field">
+                <label className="detail-edit__label">${zh ? '名称 NAME' : 'NAME'}</label>
+                <input
+                  className="detail-edit__input"
+                  value=${form.name}
+                  autoFocus
+                  onChange=${(e) => setField('name', e.target.value)}
+                  autoComplete="off"
+                  spellcheck=${false}
+                />
+              </div>
+              <div className="detail-edit__field">
+                <label className="detail-edit__label">${zh ? '类型 KIND' : 'KIND'}</label>
+                <div className="detail-edit__kinds">
+                  ${NODE_KINDS.map((k) => html`
+                    <button
+                      type="button"
+                      key=${k}
+                      className=${'detail-edit__kind' + (form.kind === k ? ' is-active' : '')}
+                      onClick=${() => setField('kind', k)}
+                    >${k}</button>`)}
+                </div>
+              </div>
+              ${EDIT_FIELDS.map((f) => html`
+                <div className="detail-edit__field" key=${f.key}>
+                  <label className="detail-edit__label">${f.label}</label>
+                  <input
+                    className="detail-edit__input"
+                    value=${form[f.key]}
+                    placeholder=${f.label}
+                    onChange=${(e) => setField(f.key, e.target.value)}
+                    autoComplete="off"
+                    spellcheck=${false}
+                  />
+                </div>`)}
+              <div className="detail-edit__field">
+                <label className="detail-edit__label">${zh ? '备注 NOTES' : 'NOTES'}</label>
+                <textarea
+                  className="detail-edit__input detail-edit__textarea"
+                  rows=${2}
+                  value=${form.notes}
+                  onChange=${(e) => setField('notes', e.target.value)}
+                  spellcheck=${false}
+                ></textarea>
+              </div>
+              <div className="detail-edit__actions">
+                <button type="button" className="detail-edit__btn" onClick=${cancelEdit}>${zh ? '取消' : 'Cancel'}</button>
+                <button type="button" className="detail-edit__btn detail-edit__btn--primary" onClick=${saveEdit}>${zh ? '保 存' : 'SAVE'}</button>
+              </div>
+            </div>
+          ` : html`
+            <div className="detail-list">
               ${detailEntries(node, locale).map(([key, value]) => html`
                 <div className="detail-row" key=${key}>
                   <span className="detail-row__key">${key}</span>
                   <span className="detail-row__value">${displayDetailValue(value)}</span>
                 </div>
-            `)}
-          </div>
+              `)}
+            </div>`}
         </div>
 
         <div className="detail-card">
@@ -1502,6 +1648,7 @@
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
     const onClearSelection = props.onClearSelection;
+    const onNodeContextMenu = props.onNodeContextMenu;
     const svgRef = useRef(null);
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
@@ -2037,6 +2184,16 @@
       canvas.addEventListener('pointerleave', onPointerUp);
       canvas.addEventListener('click', onClick);
 
+      // 右键节点弹出上下文菜单 (编辑/删除)
+      const onContextMenu = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const node = findNode(event.clientX - rect.left, event.clientY - rect.top);
+        if (!node || node.synthetic) return;
+        event.preventDefault();
+        if (onNodeContextMenu) onNodeContextMenu(node, event.clientX, event.clientY);
+      };
+      canvas.addEventListener('contextmenu', onContextMenu);
+
       const resizeObserver = new ResizeObserver(() => {
         const nextWidth = container.clientWidth || width;
         const nextHeight = container.clientHeight || height;
@@ -2069,8 +2226,9 @@
         canvas.removeEventListener('pointerup', onPointerUp);
         canvas.removeEventListener('pointerleave', onPointerUp);
         canvas.removeEventListener('click', onClick);
+        canvas.removeEventListener('contextmenu', onContextMenu);
       };
-    }, [processed, layoutMode, onSelectNode, onSelectRelationship, onClearSelection]);
+    }, [processed, layoutMode, onSelectNode, onSelectRelationship, onClearSelection, onNodeContextMenu]);
 
     return html`
       <div ref=${containerRef} className="graph-canvas-wrap">
@@ -2152,6 +2310,9 @@
     const [addRelOpen, setAddRelOpen] = useState(false);
     const [addRelSource, setAddRelSource] = useState(null);
     const [addRelTarget, setAddRelTarget] = useState(null);
+    const [contextMenu, setContextMenu] = useState(null);
+    const [pendingDeleteNode, setPendingDeleteNode] = useState(null);
+    const [editNonce, setEditNonce] = useState(0);
     const [dataState, setDataState] = useState('loading');
     const [searchState, setSearchState] = useState('idle');
     const [bootFading, setBootFading] = useState(false);
@@ -2402,6 +2563,64 @@
       setAddRelOpen(false);
     };
 
+    // 右键菜单"编辑": 选中节点 + 打开详情面板 + 通知面板进入内联编辑态
+    const handleRequestEditNode = useCallback((node) => {
+      if (!node || node.synthetic) return;
+      setContextMenu(null);
+      handleSelectNode(node);
+      setIsDetailsOpen(true);
+      setEditNonce(Date.now());
+    }, [handleSelectNode]);
+
+    const handleNodeContextMenu = useCallback((node, x, y) => {
+      if (!node || node.synthetic) return;
+      setContextMenu({
+        node: node,
+        x: Math.min(x, window.innerWidth - 160),
+        y: Math.min(y, window.innerHeight - 130),
+      });
+    }, []);
+
+    const handleUpdateNode = async (nodeId, payload) => {
+      if (!nodeId || !payload) return;
+      try {
+        await updateNode(nodeId, payload);
+      } catch {
+        // 后端不可用时本地兜底
+      }
+      setGraph((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => (n.id === nodeId ? { ...n, ...payload } : n)),
+      }));
+      setSelectedNode((prev) => (prev && prev.id === nodeId ? { ...prev, ...payload } : prev));
+    };
+
+    // 删除节点 (DETACH DELETE 会一并删除其所有关系)
+    const handleDeleteNode = async (node) => {
+      if (!node) return;
+      const nodeId = node.id;
+      try {
+        await deleteNode(nodeId);
+      } catch {
+        // 后端不可用时本地兜底
+      }
+      setGraph((prev) => {
+        const ridOf = (x) => (x && typeof x === 'object' ? x.id : x);
+        return {
+          nodes: prev.nodes.filter((n) => n.id !== nodeId),
+          relationships: prev.relationships.filter((r) => ridOf(r.source) !== nodeId && ridOf(r.target) !== nodeId),
+        };
+      });
+      neighborReqRef.current++;
+      if (selectedNode && selectedNode.id === nodeId) {
+        setSelectedNode(null);
+        setNeighbors(null);
+        setIsDetailsOpen(false);
+      }
+      setPendingDeleteNode(null);
+      setContextMenu(null);
+    };
+
     const handleImportJson = async (payload) => {
       try {
         await importJson(payload);
@@ -2482,6 +2701,7 @@
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
                     onClearSelection=${handleClearSelection}
+                    onNodeContextMenu=${handleNodeContextMenu}
                   />
                 `
               : html`
@@ -2504,6 +2724,8 @@
                 graphRelationships=${filteredGraph.relationships}
                 onSelectNode=${handleSelectNode}
                 onSelectMember=${handleSelectMember}
+                onUpdateNode=${handleUpdateNode}
+                editNonce=${editNonce}
                 onClose=${() => setIsDetailsOpen(false)}
                 locale=${locale}
                 t=${t}
@@ -2538,6 +2760,43 @@
           valueTarget=${addRelTarget}
           locale=${locale}
         />
+
+        ${contextMenu ? html`
+          <div
+            className="ctx-overlay"
+            onMouseDown=${(e) => { if (e.target === e.currentTarget) setContextMenu(null); }}
+            onContextMenu=${(e) => { e.preventDefault(); setContextMenu(null); }}
+          >
+            <div className="ctx-menu" style=${{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }}>
+              <div className="ctx-menu__title">${nodeLabel(contextMenu.node)}</div>
+              <button className="ctx-menu__item" onClick=${() => handleRequestEditNode(contextMenu.node)}>
+                <span className="ctx-menu__icon">✎</span>${t('edit')}
+              </button>
+              <button className="ctx-menu__item ctx-menu__item--danger" onClick=${() => { setPendingDeleteNode(contextMenu.node); setContextMenu(null); }}>
+                <span className="ctx-menu__icon">✕</span>${t('delete')}
+              </button>
+            </div>
+          </div>`
+        : null}
+
+        ${pendingDeleteNode ? html`
+          <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) setPendingDeleteNode(null); }}>
+            <div className="modal confirm-modal">
+              <div className="panel__title">${locale === 'zh' ? '// 删除节点' : '// DELETE NODE'}</div>
+              <div className="confirm-text">
+                ${locale === 'zh' ? '确定删除节点' : 'Delete node'}
+                <b> ${nodeLabel(pendingDeleteNode)} </b>
+                ${locale === 'zh' ? '及其所有关系吗？此操作不可恢复。' : 'and all its relationships? This cannot be undone.'}
+              </div>
+              <div className="modal__actions">
+                <button className="toolbar__button" onClick=${() => setPendingDeleteNode(null)}>${locale === 'zh' ? '取消' : 'Cancel'}</button>
+                <button className="toolbar__button rel-submit confirm-danger" onClick=${() => handleDeleteNode(pendingDeleteNode)}>
+                  ${locale === 'zh' ? '删 除' : 'DELETE'}
+                </button>
+              </div>
+            </div>
+          </div>`
+        : null}
 
         ${!bootDone && (dataState === 'loading' || dataState === 'ready') ? html`
           <div className=${'init-overlay' + (bootFading ? ' init-overlay--fading' : '')} role="status" aria-label="Initializing map">
