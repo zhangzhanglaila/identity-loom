@@ -56,6 +56,9 @@
       exportBackup: '导出备份',
       exportHint: '导出当前全部节点和关系为 JSON 文件，换电脑后在此文件中导入即可完整恢复。',
       exportFailed: '导出失败，请确认后端服务正常。',
+      dropzone: '将 JSON / CSV 文件拖到此处，或点击选择文件',
+      fileLoaded: '已载入文件：',
+      fileReadError: '文件读取失败，请重试。',
       nodeIdPrompt: '节点 ID',
       nodeKindPrompt: '节点类型',
       nodeNamePrompt: '节点名称',
@@ -130,6 +133,9 @@
       exportBackup: 'Export backup',
       exportHint: 'Export all nodes and relationships as a JSON file. Import it here on another computer to fully restore the graph.',
       exportFailed: 'Export failed. Check that the backend is running.',
+      dropzone: 'Drag a JSON / CSV file here, or click to choose a file',
+      fileLoaded: 'Loaded file: ',
+      fileReadError: 'Failed to read the file. Please try again.',
       nodeIdPrompt: 'Node id',
       nodeKindPrompt: 'Node kind',
       nodeNamePrompt: 'Node name',
@@ -1298,6 +1304,11 @@
     const [text, setText] = useState('');
     const [exporting, setExporting] = useState(false);
     const [exportError, setExportError] = useState('');
+    const [dragOver, setDragOver] = useState(false);
+    const [fileName, setFileName] = useState('');
+    const [fileError, setFileError] = useState('');
+    const fileInputRef = useRef(null);
+    const dragDepthRef = useRef(0);
 
     const handleExport = async () => {
       if (exporting) return;
@@ -1311,6 +1322,33 @@
         setExporting(false);
       }
     };
+
+    // 读取拖入/选择的文件,按扩展名自动切换 JSON / CSV 模式
+    const loadFile = (file) => {
+      if (!file) return;
+      const nextMode = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json';
+      const reader = new FileReader();
+      reader.onload = () => {
+        setText(String(reader.result || ''));
+        setMode(nextMode);
+        setFileName(file.name);
+        setFileError('');
+      };
+      reader.onerror = () => setFileError(t('fileReadError'));
+      reader.readAsText(file, 'utf-8');
+    };
+
+    // 弹窗打开期间阻止浏览器默认的拖拽打开文件行为,避免误拖导致页面跳转
+    useEffect(() => {
+      if (!open) return undefined;
+      const prevent = (e) => e.preventDefault();
+      window.addEventListener('dragover', prevent);
+      window.addEventListener('drop', prevent);
+      return () => {
+        window.removeEventListener('dragover', prevent);
+        window.removeEventListener('drop', prevent);
+      };
+    }, [open]);
 
     const preview = useMemo(() => {
       if (mode === 'json') {
@@ -1340,6 +1378,44 @@
             <button className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>${t('json')}</button>
             <button className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>${t('csv')}</button>
           </div>
+          <div
+            className=${'dropzone' + (dragOver ? ' is-dragover' : '')}
+            role="button"
+            tabIndex="0"
+            onClick=${() => fileInputRef.current && fileInputRef.current.click()}
+            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
+            onDragEnter=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current += 1; setDragOver(true); }}
+            onDragOver=${(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDragLeave=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current = Math.max(0, dragDepthRef.current - 1); if (dragDepthRef.current === 0) setDragOver(false); }}
+            onDrop=${(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dragDepthRef.current = 0;
+              setDragOver(false);
+              const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+              if (file) loadFile(file);
+            }}
+          >
+            <svg className="dropzone__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4"></path>
+              <path d="m7 9 5-5 5 5"></path>
+              <path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"></path>
+            </svg>
+            <span className="dropzone__text">${t('dropzone')}</span>
+            ${fileName ? html`<span className="dropzone__file">${t('fileLoaded')}${fileName}</span>` : null}
+            <input
+              ref=${fileInputRef}
+              type="file"
+              accept=".json,.csv,application/json,text/csv"
+              className="dropzone__input"
+              onChange=${(e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) loadFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          ${fileError ? html`<div className="backup-row__error">${fileError}</div>` : null}
           <textarea className="modal__textarea" value=${text} onInput=${(e) => setText(e.target.value)} placeholder=${t('importPlaceholders')[mode]}></textarea>
           <div className="modal__actions">
             <button className="toolbar__button" onClick=${onClose}>${t('close')}</button>
