@@ -1,47 +1,37 @@
 # Identity Loom / 身份织网
 
-Local-first identity graph for visualizing accounts, login methods, and binding relationships across platforms.  
-一个本地优先的账号关系图谱，用于展示各平台账号、登录方式和绑定关系。
+Phone numbers pile up and accounts sprawl across dozens of platforms. Which alt account is bound to which SIM? Which old phone — or a device you lent someone — is still logged in? Main accounts, alts, third-party sign-ins, real-name verifications... they tangle into a knot. By the time you want to close an account, rebind a login, or audit your own security, there is nowhere to begin.
+
+**Identity Loom** weaves these scattered identities into a single map: with `YOU` at the center, every account, platform, login method, and binding relationship is visible at a glance. Fully local-first — your data never leaves your machine.
+
+---
+
+手机号越办越多，账号散落在几十个平台：哪个小号绑了哪张卡？哪台旧手机、甚至借出去的设备还在登录？主号、小号、第三方登录、实名认证……缠成一团死结。等你想注销账号、换绑登录方式或排查安全风险时，根本无从下手。
+
+**Identity Loom** 把这些散落的身份织成一张图：以 `YOU` 为中心，账号、平台、登录方式和绑定关系一目了然。完全本地优先，数据永远不会离开你自己的机器。
 
 ## Screenshots / 页面展示
-
-> Save screenshots under `docs/images/` with the suggested filenames below — they will render automatically.
-> 把截图放到 `docs/images/` 目录并使用下面建议的文件名，即可自动显示。
 
 ### Graph overview / 关系图谱总览
 
 The core view around the `YOU` node — platforms, accounts, and binding relationships laid out as an interactive force graph. Click a node to smoothly center it.
 围绕 `YOU` 核心节点的主视图，平台、账号与绑定关系以可交互的力导向图谱呈现，点击节点可平滑移动到中心。
 
-![Graph overview](docs/images/01-graph-overview.png)
+![image-20260912002507354](README.assets/image-20260912002507354.png)
 
 ### Node detail & inline editing / 节点详情与内联编辑
 
 The white detail panel on the right shows every field of a node. Click ✎ to edit directly inside the panel — no separate dialog; right-click a node for edit / delete actions.
 右侧白色详情面板展示节点的全部字段，点击 ✎ 即可在面板内直接编辑，无需单独弹窗；右键节点可进行编辑 / 删除。
 
-![Node detail and editing](docs/images/02-node-detail-edit.png)
+![image-20260912002543769](README.assets/image-20260912002543769.png)
 
-### Add node & relationship / 新增节点与关系
+### Fun startup screen / 有趣的启动页
 
-Add nodes on the fly while creating a relationship, so new accounts can be linked without creating them separately first.
-在新增关系时可直接内联新增节点，新账号无需提前单独创建即可建立关联。
+A playful spider-web themed boot screen sets the mood before the graph appears.
+进入图谱前，一个好玩的蜘蛛网主题启动页先把氛围拉满。
 
-![Add node and relationship](docs/images/03-add-node-relationship.png)
-
-### Search & focus / 搜索与定位
-
-Search by name, ID, or platform to quickly locate any node and smoothly move it into focus.
-支持按名称、ID 或平台搜索，快速定位任意节点并平滑聚焦。
-
-![Search and focus](docs/images/04-search-focus.png)
-
-### Data import / 数据导入
-
-Bulk-load data through JSON or CSV import, with real account data kept out of git.
-通过 JSON 或 CSV 导入批量录入数据，真实账号数据不会进入 git。
-
-![Data import](docs/images/05-data-import.png)
+![image-20260912002354215](README.assets/image-20260912002354215.png)
 
 ## Stack / 技术栈
 
