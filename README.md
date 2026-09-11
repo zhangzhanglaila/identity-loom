@@ -31,7 +31,7 @@ The white detail panel on the right shows every field of a node. Click ✎ to ed
 A playful spider-web themed boot screen sets the mood before the graph appears.
 进入图谱前，一个好玩的蜘蛛网主题启动页先把氛围拉满。
 
-![image-20260912002354215](README.assets/image-20260912002354215.png)
+![image-20260912002924988](README.assets/image-20260912002924988.png)
 
 ## Stack / 技术栈
 
