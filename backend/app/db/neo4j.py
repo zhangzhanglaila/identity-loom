@@ -209,6 +209,83 @@ class Neo4jStore:
                 )
             return {"nodes": list(nodes.values()), "relationships": rels}
 
+    # 全量备份导出: 包含没有任何关系的孤立节点,字段与导入接口对齐
+    _EXPORT_NODE_FIELDS = (
+        "id",
+        "kind",
+        "name",
+        "display_name",
+        "platform",
+        "username",
+        "nickname",
+        "email",
+        "phone",
+        "uid",
+        "url",
+        "status",
+        "notes",
+        "tags",
+    )
+
+    @staticmethod
+    def _decode_extra(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (ValueError, TypeError):
+                return value
+        return value if value is not None else {}
+
+    def export_all(self) -> Dict[str, List[Dict[str, Any]]]:
+        with self.session() as session:
+            nodes: List[Dict[str, Any]] = []
+            node_records = session.run("MATCH (n:GraphNode) RETURN n")
+            for row in node_records:
+                props = dict(row["n"])
+                node = {key: props.get(key) for key in self._EXPORT_NODE_FIELDS}
+                node["tags"] = props.get("tags") or []
+                node["extra"] = self._decode_extra(props.get("extra"))
+                nodes.append(node)
+
+            rels: List[Dict[str, Any]] = []
+            used_rel_ids: set = set()
+            rel_records = session.run(
+                """
+                MATCH (a:GraphNode)-[r:LINK]->(b:GraphNode)
+                RETURN a, r, b
+                """
+            )
+            for row in rel_records:
+                a = dict(row["a"])
+                b = dict(row["b"])
+                r = dict(row["r"])
+                source_id = a.get("id")
+                target_id = b.get("id")
+                rel_type = r.get("relation_type")
+                rel_id = r.get("id")
+                # 早期通过 Cypher 直接创建的关系可能没有 id, 导出时补一个确定性 id
+                if not rel_id:
+                    base = f"rel__{source_id}__{rel_type}__{target_id}"
+                    rel_id = base
+                    suffix = 2
+                    while rel_id in used_rel_ids:
+                        rel_id = f"{base}__{suffix}"
+                        suffix += 1
+                used_rel_ids.add(rel_id)
+                rels.append(
+                    {
+                        "id": rel_id,
+                        "source": source_id,
+                        "target": target_id,
+                        "relation_type": rel_type,
+                        "label": r.get("label"),
+                        "status": r.get("status"),
+                        "notes": r.get("notes"),
+                        "extra": self._decode_extra(r.get("extra")),
+                    }
+                )
+            return {"nodes": nodes, "relationships": rels}
+
     def neighbors(self, node_id: str, depth: int = 1) -> Dict[str, List[Dict[str, Any]]]:
         depth = max(1, min(depth, 3))
         depth_clause = f"*1..{depth}"

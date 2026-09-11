@@ -53,6 +53,9 @@
       noSearchResults: '没有找到匹配节点。',
       searchFailed: '搜索失败，请确认后端服务正常。',
       importAction: '导入',
+      exportBackup: '导出备份',
+      exportHint: '导出当前全部节点和关系为 JSON 文件，换电脑后在此文件中导入即可完整恢复。',
+      exportFailed: '导出失败，请确认后端服务正常。',
       nodeIdPrompt: '节点 ID',
       nodeKindPrompt: '节点类型',
       nodeNamePrompt: '节点名称',
@@ -124,6 +127,9 @@
       noSearchResults: 'No matching nodes found.',
       searchFailed: 'Search failed. Check that the backend is running.',
       importAction: 'Import',
+      exportBackup: 'Export backup',
+      exportHint: 'Export all nodes and relationships as a JSON file. Import it here on another computer to fully restore the graph.',
+      exportFailed: 'Export failed. Check that the backend is running.',
       nodeIdPrompt: 'Node id',
       nodeKindPrompt: 'Node kind',
       nodeNamePrompt: 'Node name',
@@ -785,6 +791,22 @@
     return request('/api/import/csv', { method: 'POST', body: JSON.stringify({ csv_text: csvText }) });
   }
 
+  // 下载全量图谱备份 JSON,文件名带当天日期
+  async function downloadBackup() {
+    const response = await fetch(API_BASE + '/api/export/json');
+    if (!response.ok) throw new Error('Export failed: ' + response.status);
+    const blob = await response.blob();
+    const stamp = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'identity-loom-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   function dedupeById(items) {
     const map = new Map();
     for (const item of items) map.set(item.id, item);
@@ -1274,6 +1296,21 @@
     const t = props.t;
     const [mode, setMode] = useState('json');
     const [text, setText] = useState('');
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState('');
+
+    const handleExport = async () => {
+      if (exporting) return;
+      setExporting(true);
+      setExportError('');
+      try {
+        await downloadBackup();
+      } catch (err) {
+        setExportError(t('exportFailed'));
+      } finally {
+        setExporting(false);
+      }
+    };
 
     const preview = useMemo(() => {
       if (mode === 'json') {
@@ -1292,6 +1329,13 @@
       <div className="modal-backdrop">
         <div className="modal">
           <div className="panel__title">${t('importGraph')}</div>
+          <div className="backup-row">
+            <span className="backup-row__hint">${t('exportHint')}</span>
+            <button type="button" className="toolbar__button backup-row__btn" disabled=${exporting} onClick=${handleExport}>
+              ${exporting ? '…' : t('exportBackup')}
+            </button>
+          </div>
+          ${exportError ? html`<div className="backup-row__error">${exportError}</div>` : null}
           <div className="mode-switch">
             <button className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>${t('json')}</button>
             <button className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>${t('csv')}</button>

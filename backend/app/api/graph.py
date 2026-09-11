@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query
+import json
+
+from fastapi import APIRouter, HTTPException, Query, Response
 from app.services.csv_importer import parse_csv_graph
 
 from app.models.schemas import (
@@ -78,6 +80,18 @@ def build_graph_router(service: GraphService) -> APIRouter:
     @router.get("/stats")
     def stats():
         return service.store.stats()
+
+    @router.get("/export/json")
+    def export_json():
+        data = service.store.export_all()
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        return Response(
+            content=content,
+            media_type="application/json; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="identity-loom-backup.json"'
+            },
+        )
 
     @router.post("/import/json")
     def import_json(payload: dict):
