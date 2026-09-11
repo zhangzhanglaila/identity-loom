@@ -16,7 +16,7 @@
       listView: '列表',
       addNode: '新增节点',
       addEdge: '新增关系',
-      import: '导入',
+      import: '导入/导出',
       toggleView: '切换视图',
       filters: '筛选',
       showDetails: '详情',
@@ -39,7 +39,13 @@
       links: '链接',
       noItems: '暂无内容。',
       noConnections: '暂无关联。',
-      importGraph: '导入图谱',
+      importGraph: '导入 / 导出',
+      exportSection: '导出备份',
+      importSection: '导入数据',
+      importViaFile: '文件导入',
+      importViaText: '直接输入',
+      chooseFile: '选择文件',
+      dropHint: '或将 JSON / CSV 文件拖到这里',
       json: 'JSON',
       csv: 'CSV',
       close: '关闭',
@@ -56,7 +62,6 @@
       exportBackup: '导出备份',
       exportHint: '导出当前全部节点和关系为 JSON 文件，换电脑后在此文件中导入即可完整恢复。',
       exportFailed: '导出失败，请确认后端服务正常。',
-      dropzone: '将 JSON / CSV 文件拖到此处，或点击选择文件',
       fileLoaded: '已载入文件：',
       fileReadError: '文件读取失败，请重试。',
       nodeIdPrompt: '节点 ID',
@@ -93,7 +98,7 @@
       listView: 'List',
       addNode: 'Add Node',
       addEdge: 'Add Edge',
-      import: 'Import',
+      import: 'Import/Export',
       toggleView: 'Toggle View',
       filters: 'Filters',
       showDetails: 'Details',
@@ -116,7 +121,13 @@
       links: 'Links',
       noItems: 'No items.',
       noConnections: 'No connections.',
-      importGraph: 'Import Graph',
+      importGraph: 'Import / Export',
+      exportSection: 'Export backup',
+      importSection: 'Import data',
+      importViaFile: 'From file',
+      importViaText: 'Paste text',
+      chooseFile: 'Choose file',
+      dropHint: 'or drag a JSON / CSV file here',
       json: 'JSON',
       csv: 'CSV',
       close: 'Close',
@@ -133,7 +144,6 @@
       exportBackup: 'Export backup',
       exportHint: 'Export all nodes and relationships as a JSON file. Import it here on another computer to fully restore the graph.',
       exportFailed: 'Export failed. Check that the backend is running.',
-      dropzone: 'Drag a JSON / CSV file here, or click to choose a file',
       fileLoaded: 'Loaded file: ',
       fileReadError: 'Failed to read the file. Please try again.',
       nodeIdPrompt: 'Node id',
@@ -1367,56 +1377,71 @@
       <div className="modal-backdrop">
         <div className="modal">
           <div className="panel__title">${t('importGraph')}</div>
-          <div className="backup-row">
-            <span className="backup-row__hint">${t('exportHint')}</span>
-            <button type="button" className="toolbar__button backup-row__btn" disabled=${exporting} onClick=${handleExport}>
-              ${exporting ? '…' : t('exportBackup')}
-            </button>
+          <div className="modal-section">
+            <div className="modal-section__title">${t('exportSection')}</div>
+            <div className="backup-row">
+              <span className="backup-row__hint">${t('exportHint')}</span>
+              <button type="button" className="toolbar__button backup-row__btn" disabled=${exporting} onClick=${handleExport}>
+                ${exporting ? '…' : t('exportBackup')}
+              </button>
+            </div>
+            ${exportError ? html`<div className="backup-row__error">${exportError}</div>` : null}
           </div>
-          ${exportError ? html`<div className="backup-row__error">${exportError}</div>` : null}
-          <div className="mode-switch">
-            <button className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>${t('json')}</button>
-            <button className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>${t('csv')}</button>
-          </div>
-          <div
-            className=${'dropzone' + (dragOver ? ' is-dragover' : '')}
-            role="button"
-            tabIndex="0"
-            onClick=${() => fileInputRef.current && fileInputRef.current.click()}
-            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
-            onDragEnter=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current += 1; setDragOver(true); }}
-            onDragOver=${(e) => { e.preventDefault(); e.stopPropagation(); }}
-            onDragLeave=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current = Math.max(0, dragDepthRef.current - 1); if (dragDepthRef.current === 0) setDragOver(false); }}
-            onDrop=${(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              dragDepthRef.current = 0;
-              setDragOver(false);
-              const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
-              if (file) loadFile(file);
-            }}
-          >
-            <svg className="dropzone__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 16V4"></path>
-              <path d="m7 9 5-5 5 5"></path>
-              <path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"></path>
-            </svg>
-            <span className="dropzone__text">${t('dropzone')}</span>
-            ${fileName ? html`<span className="dropzone__file">${t('fileLoaded')}${fileName}</span>` : null}
-            <input
-              ref=${fileInputRef}
-              type="file"
-              accept=".json,.csv,application/json,text/csv"
-              className="dropzone__input"
-              onChange=${(e) => {
-                const file = e.target.files && e.target.files[0];
+          <div className="modal-section">
+            <div className="modal-section__title">${t('importSection')}</div>
+            <div className="import-sub">${t('importViaFile')}</div>
+            <div
+              className=${'file-row' + (dragOver ? ' is-dragover' : '')}
+              role="button"
+              tabIndex="0"
+              onClick=${() => fileInputRef.current && fileInputRef.current.click()}
+              onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
+              onDragEnter=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current += 1; setDragOver(true); }}
+              onDragOver=${(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDragLeave=${(e) => { e.preventDefault(); e.stopPropagation(); dragDepthRef.current = Math.max(0, dragDepthRef.current - 1); if (dragDepthRef.current === 0) setDragOver(false); }}
+              onDrop=${(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragDepthRef.current = 0;
+                setDragOver(false);
+                const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
                 if (file) loadFile(file);
-                e.target.value = '';
               }}
-            />
+            >
+              <button
+                type="button"
+                className="toolbar__button file-row__btn"
+                onClick=${(e) => { e.stopPropagation(); fileInputRef.current && fileInputRef.current.click(); }}
+              >${t('chooseFile')}</button>
+              <span className="file-row__hint">
+                <svg className="file-row__icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 16V4"></path>
+                  <path d="m7 9 5-5 5 5"></path>
+                  <path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"></path>
+                </svg>
+                ${t('dropHint')}
+              </span>
+              ${fileName ? html`<span className="file-row__file" title=${fileName}>${t('fileLoaded')}${fileName}</span>` : null}
+              <input
+                ref=${fileInputRef}
+                type="file"
+                accept=".json,.csv,application/json,text/csv"
+                className="file-row__input"
+                onChange=${(e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (file) loadFile(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            ${fileError ? html`<div className="backup-row__error">${fileError}</div>` : null}
+            <div className="import-sub">${t('importViaText')}</div>
+            <div className="mode-switch">
+              <button type="button" className=${'mode-switch__button ' + (mode === 'json' ? 'is-active' : '')} onClick=${() => setMode('json')}>${t('json')}</button>
+              <button type="button" className=${'mode-switch__button ' + (mode === 'csv' ? 'is-active' : '')} onClick=${() => setMode('csv')}>${t('csv')}</button>
+            </div>
+            <textarea className="modal__textarea" value=${text} onInput=${(e) => setText(e.target.value)} placeholder=${t('importPlaceholders')[mode]}></textarea>
           </div>
-          ${fileError ? html`<div className="backup-row__error">${fileError}</div>` : null}
-          <textarea className="modal__textarea" value=${text} onInput=${(e) => setText(e.target.value)} placeholder=${t('importPlaceholders')[mode]}></textarea>
           <div className="modal__actions">
             <button className="toolbar__button" onClick=${onClose}>${t('close')}</button>
             <button
