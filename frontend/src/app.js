@@ -1067,22 +1067,6 @@
             </div>
           </div>
         </div>
-
-        <div className="panel">
-          <div className="panel__title">${t('kinds')}</div>
-          ${visibleKinds.map((kind) => html`
-            <label className="checkline" key=${kind}>
-              <input type="checkbox" checked=${filters.kinds.includes(kind)} onChange=${() => toggleKind(kind)} />
-              <span>${getKindLabel(locale, kind)}</span>
-            </label>
-          `)}
-        </div>
-
-        <div className="panel">
-          <div className="panel__title">${t('depth')}</div>
-          <input type="range" min="1" max="3" value=${filters.depth} onInput=${(e) => setFilters({ ...filters, depth: Number(e.target.value) })} />
-          <div className="panel__note">${t('current')}: ${filters.depth}</div>
-        </div>
       </aside>
     `;
   }

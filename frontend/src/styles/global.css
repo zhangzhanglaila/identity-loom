@@ -342,6 +342,46 @@ button, input, textarea {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
+/* —— 左侧 sidebar 统一成白色风格（和 detail-panel 一致） —— */
+.sidebar {
+  background: #f5f7fa;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.sidebar .panel {
+  background: #ffffff;
+  border: 1px solid #eeeeee;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+.sidebar .panel__title {
+  color: #333333;
+  text-shadow: none;
+  letter-spacing: 1px;
+}
+.sidebar .panel__close {
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #6b7280;
+}
+.sidebar .panel__close:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+.sidebar .panel__note {
+  color: #6b7280;
+}
+.sidebar .stat {
+  background: #ffffff;
+  border-color: #eeeeee;
+}
+.sidebar .stat__label {
+  color: #6b7280;
+}
+.sidebar .stat__value {
+  color: #333333;
+  text-shadow: none;
+}
+
 .panel__heading {
   display: flex;
   align-items: center;
