@@ -266,7 +266,7 @@
   };
 
   const relationLabels = {
-    login_by: { zh: '登录', en: 'Login', zhRev: '用于登录', enRev: 'Used by' },
+    login_by: { zh: '登录方式', en: 'Logs in with', zhRev: '用于登录', enRev: 'Used by' },
     binds: { zh: '绑定', en: 'Binds', zhRev: '绑定账号', enRev: 'Bound by' },
     belongs_to: { zh: '属于平台', en: 'Belongs to', zhRev: '旗下账号', enRev: 'Accounts' },
     owns: { zh: '拥有', en: 'Owns', zhRev: '拥有者', enRev: 'Owner' },
