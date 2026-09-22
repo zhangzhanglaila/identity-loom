@@ -2072,9 +2072,9 @@
         }
         introMaxDist = md;
         // 判断是首次 boot 还是 remount (从列表切回图谱):
-        // 首次 boot 对齐遮罩淡出用长延迟; remount 无遮罩, simulation 需短暂 settle 即可
+        // 两者都用短延迟让 intro 在 overlay 半透明期间/或刚消失时就开始, 避免黑屏间隙
         const isRemount = positionCacheRef.current.size > 0;
-        const startDelay = isRemount ? 40 : INTRO_START_DELAY;
+        const startDelay = isRemount ? 40 : 100;
         introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + startDelay;
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
