@@ -516,6 +516,7 @@ button, input, textarea {
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
+.modal__textarea::placeholder { color: #9ca3af; opacity: 1; }
 .modal__textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
 
 .modal__actions {
