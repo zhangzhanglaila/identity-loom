@@ -2072,9 +2072,11 @@
         }
         introMaxDist = md;
         // 判断是首次 boot 还是 remount (从列表切回图谱):
-        // 两者都用短延迟让 intro 在 overlay 半透明期间/或刚消失时就开始, 避免黑屏间隙
+        // 首启: overlay 600ms 淡出, startIntro 在 T+40ms 被调, 延迟 560ms 让 intro
+        //       恰好在遮罩完全消失的瞬间 (T+600) 开始, YOU 坠落全程可见不被遮挡;
+        // remount: 无遮罩, 40ms 短暂 settle 即开始
         const isRemount = positionCacheRef.current.size > 0;
-        const startDelay = isRemount ? 40 : 100;
+        const startDelay = isRemount ? 40 : 560;
         introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + startDelay;
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
