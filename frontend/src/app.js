@@ -2782,6 +2782,7 @@
     const [displayMode, setDisplayMode] = useState('full');
     const [viewMode, setViewMode] = useState('graph');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
     const [graph, setGraph] = useState({ nodes: [], relationships: [] });
     const [selectedNode, setSelectedNode] = useState(null);
