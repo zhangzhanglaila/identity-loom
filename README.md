@@ -1,4 +1,5 @@
-# 身份织网 / Identity Loom
+Identity Loom / 身份织网
+===
 
 手机号越办越多，账号散落在几十个平台：哪个小号绑了哪张卡？哪台旧手机、甚至借出去的设备还在登录？主号、小号、第三方登录、实名认证……缠成一团死结。等你想注销账号、换绑登录方式或排查安全风险时，根本无从下手。
 
@@ -45,7 +46,24 @@ A playful spider-web themed boot screen sets the mood before the graph appears.
 - 记录同一平台下的多个账号 / Record many accounts per platform
 - 围绕 `YOU` 展示关系图 / Show relationship graph around `YOU`
 - 支持手动录入、JSON 导入和 CSV 导入 / Support manual entry, JSON import, and CSV import
+- 自然语言导入（LLM 预填 + 人工确认） / Natural-language import (LLM prefill + human confirm)
 - 私有数据不进入 git / Keep private data out of git
+
+## 自然语言导入 / NL import
+
+工具栏 **LLM 导入**：直接输入口语描述（"我的谷歌账号绑定了 QQ 邮箱和 180 主号"），
+本地模型抽取实体与关系，对齐到已有节点后生成"待确认清单"，人工勾选/修正后才写入图谱。
+**LLM 只预填、不写库**，身份数据不经过任何云端接口。
+
+- 默认走本地 Ollama（`LLM_BASE_URL`，见 `.env.example`）；未运行时自动降级为规则解析，精度较低但流程可用。
+- 隐私红线：LLM 地址必须是本机（localhost/127.0.0.1），远程地址默认拒绝（`LLM_ALLOW_REMOTE=true` 可显式放开，不推荐）。
+- 对齐复用图谱已有节点与别名信息：手机号/邮箱精确匹配、平台别名（谷歌↔Google）、号码片段（"180"→手机前缀/尾号）等。
+
+```bash
+# 可选：安装并启动本地模型（Qwen2.5 小模型即可）
+ollama pull qwen2.5:7b
+ollama serve
+```
 
 ## 隐私 / Privacy
 

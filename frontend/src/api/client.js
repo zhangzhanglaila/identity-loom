@@ -57,3 +57,21 @@ export function importCsv(csvText) {
     body: JSON.stringify({ csv_text: csvText })
   });
 }
+
+export function getLlmStatus() {
+  return request('/api/llm/status');
+}
+
+export function extractWithLlm(text) {
+  return request('/api/llm/extract', {
+    method: 'POST',
+    body: JSON.stringify({ text })
+  });
+}
+
+export function applyLlmChanges(payload) {
+  return request('/api/llm/apply', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}

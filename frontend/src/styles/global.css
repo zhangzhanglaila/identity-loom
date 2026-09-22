@@ -1297,3 +1297,59 @@ svg text {
   box-shadow: 0 2px 8px rgba(239, 68, 68, .3) !important;
 }
 .confirm-danger:hover { background: #dc2626 !important; border-color: #dc2626 !important; box-shadow: 0 4px 12px rgba(239, 68, 68, .4) !important; }
+
+/* ===== LLM 自然语言导入 ===== */
+.modal--wide { width: min(860px, calc(100vw - 32px)); }
+.llm-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.llm-status__badge {
+  display: inline-block;
+  font-size: 11px; letter-spacing: 1px;
+  border: 1px solid #d1d5db; border-radius: 999px;
+  padding: 4px 12px; color: #6b7280; background: #f9fafb;
+}
+.llm-status__badge--ok { border-color: #10b981; color: #047857; background: #ecfdf5; }
+.llm-status__badge--warn { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
+.llm-warning {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px solid #fcd34d; border-radius: 6px;
+  background: #fffbeb; color: #92400e; font-size: 12px; line-height: 1.7;
+}
+.llm-confirm { margin-top: 14px; }
+.llm-section-title {
+  font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+  color: #4b5563; margin: 14px 0 8px; padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.llm-empty { color: #9ca3af; font-size: 13px; padding: 6px 0; }
+.llm-list { display: flex; flex-direction: column; gap: 8px; }
+.llm-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px;
+  background: #ffffff; transition: border-color .15s, background .15s;
+}
+.llm-item.is-checked { border-color: #3b82f6; background: #f8faff; }
+.llm-check { display: flex; align-items: center; gap: 8px; padding-top: 2px; cursor: pointer; }
+.llm-check input { accent-color: #3b82f6; cursor: pointer; }
+.llm-badge {
+  display: inline-block; font-size: 10px; letter-spacing: 1px;
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+.llm-badge--new { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.llm-badge--existing { background: #e5e7eb; color: #4b5563; border: 1px solid #d1d5db; }
+.llm-badge--dup { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
+.llm-item__body { flex: 1; display: grid; gap: 5px; min-width: 0; }
+.llm-item__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.llm-item__name { font-size: 13px; color: #1f2937; font-weight: 600; }
+.llm-item__name em { font-style: normal; color: #9ca3af; font-weight: 400; font-size: 12px; margin-left: 6px; }
+.llm-item__arrow { color: #9ca3af; font-size: 12px; }
+.llm-item__meta { font-size: 11px; color: #9ca3af; letter-spacing: .5px; }
+.llm-item__note { font-size: 11px; color: #6b7280; line-height: 1.5; }
+.llm-edit {
+  border: 1px solid #d1d5db; border-radius: 5px; background: #ffffff;
+  color: #333333; padding: 5px 8px; font-size: 12px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.llm-edit:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
+.llm-edit--id { width: 180px; font-family: 'Cascadia Code', 'Consolas', monospace; }
+.llm-edit--select { padding: 4px 6px; }
+.llm-count { font-size: 12px; color: #6b7280; align-self: center; margin-right: auto; }

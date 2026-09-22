@@ -8,7 +8,8 @@ export function Toolbar({
   layoutMode,
   onAddNode,
   onAddRelationship,
-  onImport
+  onImport,
+  onLlmImport
 }) {
   return (
     <div className="toolbar">
@@ -26,6 +27,7 @@ export function Toolbar({
       <button className="toolbar__button" onClick={onAddNode}>Add Node</button>
       <button className="toolbar__button" onClick={onAddRelationship}>Add Edge</button>
       <button className="toolbar__button" onClick={onImport}>Import</button>
+      <button className="toolbar__button" onClick={onLlmImport}>LLM 导入</button>
     </div>
   );
 }

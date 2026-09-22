@@ -86,7 +86,34 @@
       importPlaceholders: {
         json: '{"nodes":[],"relationships":[]}',
         csv: 'record_type,id,source,target,relation_type,name'
-      }
+      },
+      llmImport: 'LLM 导入',
+      llmTitle: 'LLM 自然语言导入',
+      llmModelOk: '本地模型可用',
+      llmModelWarn: '本地模型未运行，将使用规则解析（精度较低，请重点核对）',
+      llmEngine: '抽取引擎',
+      llmRuleEngine: '规则兜底',
+      llmStatusFail: '无法获取 LLM 状态',
+      llmExtractFail: '抽取失败',
+      llmApplyFail: '写入失败',
+      llmExtract: '抽取候选',
+      llmExtracting: '抽取中…',
+      llmApply: '确认写入图谱',
+      llmApplying: '写入中…',
+      llmNodesTitle: '候选节点（勾选 = 写入，未勾选的已有节点不会改动）',
+      llmRelsTitle: '候选关系（勾选 = 写入，已存在的关系默认不勾）',
+      llmNoEntity: '未识别到实体',
+      llmNoRel: '未识别到关系',
+      llmNew: '新节点',
+      llmExisting: '已有',
+      llmDup: '已存在',
+      llmRelNew: '新增',
+      llmChecked: '已勾选',
+      llmConf: '置信',
+      llmAlignedTo: '对齐到',
+      llmKind: '类型',
+      llmPlaceholder: '用自然语言描述，例如：\n“我的谷歌账号绑定了 QQ 邮箱和 180 主号”\n“Telegram 用 150 这个号登录”\n“outlook 邮箱是 zhang@outlook.com”',
+      llmApplySkipped: '已写入，但有关系因端点缺失或重复被跳过'
     },
     en: {
       appName: 'Identity Web',
@@ -168,7 +195,34 @@
       importPlaceholders: {
         json: '{"nodes":[],"relationships":[]}',
         csv: 'record_type,id,source,target,relation_type,name'
-      }
+      },
+      llmImport: 'LLM Import',
+      llmTitle: 'LLM natural-language import',
+      llmModelOk: 'Local model online',
+      llmModelWarn: 'Local model not running — rule-based parsing (lower accuracy, review carefully)',
+      llmEngine: 'Engine',
+      llmRuleEngine: 'Rules',
+      llmStatusFail: 'Cannot reach LLM status',
+      llmExtractFail: 'Extraction failed',
+      llmApplyFail: 'Write failed',
+      llmExtract: 'Extract candidates',
+      llmExtracting: 'Extracting…',
+      llmApply: 'Confirm & write to graph',
+      llmApplying: 'Writing…',
+      llmNodesTitle: 'Candidate nodes (checked = write; unchecked existing nodes stay untouched)',
+      llmRelsTitle: 'Candidate relationships (checked = write; existing ones unchecked by default)',
+      llmNoEntity: 'No entity recognized',
+      llmNoRel: 'No relationship recognized',
+      llmNew: 'New',
+      llmExisting: 'Existing',
+      llmDup: 'Exists',
+      llmRelNew: 'New',
+      llmChecked: 'Selected',
+      llmConf: 'Conf',
+      llmAlignedTo: 'aligned to',
+      llmKind: 'kind',
+      llmPlaceholder: 'Describe in plain language, e.g.:\n"My Google account binds my QQ mail and my 180 number"\n"Telegram logs in with the 150 number"',
+      llmApplySkipped: 'Written, but some relationships were skipped (missing endpoints or duplicates)'
     }
   };
 
@@ -807,6 +861,18 @@
     return request('/api/import/csv', { method: 'POST', body: JSON.stringify({ csv_text: csvText }) });
   }
 
+  function getLlmStatus() {
+    return request('/api/llm/status');
+  }
+
+  function extractWithLlm(text) {
+    return request('/api/llm/extract', { method: 'POST', body: JSON.stringify({ text }) });
+  }
+
+  function applyLlmChanges(payload) {
+    return request('/api/llm/apply', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
   // 下载全量图谱备份 JSON,文件名带当天日期
   async function downloadBackup() {
     const response = await fetch(API_BASE + '/api/export/json');
@@ -849,6 +915,7 @@
     const onAddNode = props.onAddNode;
     const onAddRelationship = props.onAddRelationship;
     const onImport = props.onImport;
+    const onLlmImport = props.onLlmImport;
     const onToggleSidebar = props.onToggleSidebar;
     const onToggleDetails = props.onToggleDetails;
     const isSidebarOpen = props.isSidebarOpen;
@@ -884,6 +951,7 @@
         <button className="toolbar__button" onClick=${onAddNode}>${t('addNode')}</button>
         <button className="toolbar__button" onClick=${onAddRelationship}>${t('addEdge')}</button>
         <button className="toolbar__button" onClick=${onImport}>${t('import')}</button>
+        <button className="toolbar__button" onClick=${onLlmImport}>${t('llmImport')}</button>
         <button className="toolbar__button toolbar__button--language" onClick=${onToggleLanguage} lang=${locale === 'zh' ? 'en' : 'zh'}>${t('languageToggle')}</button>
       </div>
     `;
@@ -2436,6 +2504,290 @@
     ]);
   }
 
+  const LLM_REL_TYPES = ['owns', 'belongs_to', 'binds', 'verifies', 'login_by'];
+  const LLM_NODE_KINDS = ['account', 'provider', 'identifier', 'you'];
+
+  // LLM 自然语言导入：本地模型抽取 → 对齐 → 人工勾选/修正 → 确认后才写库
+  function LlmImportDialog(props) {
+    const open = props.open;
+    const onClose = props.onClose;
+    const onApplied = props.onApplied;
+    const t = props.t;
+
+    const [text, setText] = useState('');
+    const [status, setStatus] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [applying, setApplying] = useState(false);
+    const [result, setResult] = useState(null);
+    const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
+    const [nodeChecks, setNodeChecks] = useState({});
+    const [nodeEdits, setNodeEdits] = useState({});
+    const [relChecks, setRelChecks] = useState({});
+    const [relEdits, setRelEdits] = useState({});
+
+    useEffect(() => {
+      if (!open) return;
+      setResult(null);
+      setError('');
+      setNotice('');
+      setText('');
+      setNodeChecks({});
+      setNodeEdits({});
+      setRelChecks({});
+      setRelEdits({});
+      getLlmStatus()
+        .then(setStatus)
+        .catch((e) => setError(`${t('llmStatusFail')}：${e.message}`));
+    }, [open]);
+
+    if (!open) return null;
+
+    const edit = (setter, key, field, value) =>
+      setter((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: value } }));
+
+    const runExtract = async () => {
+      if (!text.trim()) return;
+      setLoading(true);
+      setError('');
+      setNotice('');
+      try {
+        const data = await extractWithLlm(text.trim());
+        setResult(data);
+        const nc = {};
+        data.nodes.forEach((n, i) => { nc[i] = n.align_status === 'new'; });
+        setNodeChecks(nc);
+        const rc = {};
+        data.relationships.forEach((r, i) => { rc[i] = r.status !== 'duplicate'; });
+        setRelChecks(rc);
+        setNodeEdits({});
+        setRelEdits({});
+      } catch (e) {
+        setError(`${t('llmExtractFail')}：${e.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const confirmApply = async () => {
+      if (!result) return;
+      const nodes = result.nodes
+        .map((n, i) => ({ n, i }))
+        .filter(({ i }) => nodeChecks[i])
+        .map(({ n, i }) => ({ ...n, ...(nodeEdits[i] || {}) }));
+      const rels = result.relationships
+        .map((r, i) => ({ r, i }))
+        .filter(({ i }) => relChecks[i])
+        .map(({ r, i }) => ({ ...r, ...(relEdits[i] || {}) }));
+      if (!nodes.length && !rels.length) return;
+      setApplying(true);
+      setError('');
+      setNotice('');
+      try {
+        const applied = await applyLlmChanges({ nodes, relationships: rels });
+        if (onApplied) await onApplied(applied);
+        if (applied.skipped_relationships > 0) {
+          setNotice(`${t('llmApplySkipped')}（${applied.skipped_relationships}）`);
+        } else {
+          setResult(null);
+          setText('');
+          onClose();
+        }
+      } catch (e) {
+        setError(`${t('llmApplyFail')}：${e.message}`);
+      } finally {
+        setApplying(false);
+      }
+    };
+
+    const checkedCount =
+      (result ? result.nodes.filter((_, i) => nodeChecks[i]).length : 0) +
+      (result ? result.relationships.filter((_, i) => relChecks[i]).length : 0);
+
+    const pct = (v) => Math.round((v ?? 0) * 100) + '%';
+
+    return html`
+      <div className="modal-backdrop" onMouseDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal modal--wide">
+          <div className="panel__title">${t('llmTitle')}</div>
+          <div className="llm-status">
+            ${status
+              ? (status.available
+                ? html`<span className="llm-status__badge llm-status__badge--ok">${t('llmModelOk')} · ${status.model}</span>`
+                : html`<span className="llm-status__badge llm-status__badge--warn">${t('llmModelWarn')}</span>`)
+              : null}
+            ${result
+              ? html`<span className="llm-status__badge">
+                  ${t('llmEngine')}：${result.source === 'llm' ? result.model : t('llmRuleEngine')}
+                </span>`
+              : null}
+          </div>
+
+          <textarea
+            className="modal__textarea"
+            value=${text}
+            onInput=${(e) => setText(e.target.value)}
+            placeholder=${t('llmPlaceholder')}
+          ></textarea>
+          <div className="modal__actions">
+            <button className="toolbar__button" onClick=${onClose}>${t('close')}</button>
+            <button className="toolbar__button" onClick=${runExtract} disabled=${loading || !text.trim()}>
+              ${loading ? t('llmExtracting') : t('llmExtract')}
+            </button>
+          </div>
+
+          ${error ? html`<div className="llm-warning">${error}</div>` : null}
+          ${notice ? html`<div className="llm-warning">⚠ ${notice}</div>` : null}
+
+          ${result && result.warnings && result.warnings.length > 0
+            ? html`<div className="llm-warning">
+                ${result.warnings.map((w, i) => html`<div key=${i}>⚠ ${w}</div>`)}
+              </div>`
+            : null}
+
+          ${result ? html`
+            <div className="llm-confirm">
+              <div className="llm-section-title">${t('llmNodesTitle')}</div>
+              ${result.nodes.length === 0 ? html`<div className="llm-empty">${t('llmNoEntity')}</div>` : null}
+              <div className="llm-list">
+                ${result.nodes.map((node, i) => html`
+                  <div className=${'llm-item' + (nodeChecks[i] ? ' is-checked' : '')} key=${node.id + ':' + i}>
+                    <label className="llm-check">
+                      <input
+                        type="checkbox"
+                        checked=${!!nodeChecks[i]}
+                        onChange=${(e) => setNodeChecks((prev) => ({ ...prev, [i]: e.target.checked }))}
+                      />
+                      <span className=${'llm-badge llm-badge--' + node.align_status}>
+                        ${node.align_status === 'new' ? t('llmNew') : t('llmExisting')}
+                      </span>
+                    </label>
+                    <div className="llm-item__body">
+                      <div className="llm-item__row">
+                        ${node.align_status === 'new' ? html`
+                          <input
+                            className="llm-edit llm-edit--id"
+                            value=${(nodeEdits[i]?.id) ?? node.id}
+                            onChange=${(e) => edit(setNodeEdits, i, 'id', e.target.value)}
+                            title="ID"
+                          />
+                          <input
+                            className="llm-edit"
+                            value=${(nodeEdits[i]?.name) ?? node.name}
+                            onChange=${(e) => edit(setNodeEdits, i, 'name', e.target.value)}
+                          />
+                          <select
+                            className="llm-edit llm-edit--select"
+                            value=${(nodeEdits[i]?.kind) ?? node.kind}
+                            onChange=${(e) => edit(setNodeEdits, i, 'kind', e.target.value)}
+                            title=${t('llmKind')}
+                          >
+                            ${LLM_NODE_KINDS.map((k) => html`<option key=${k} value=${k}>${k}</option>`)}
+                          </select>
+                        ` : html`
+                          <span className="llm-item__name">${node.name} <em>${node.id}</em></span>
+                          <span className="llm-item__meta">${t('llmKind')}: ${node.kind}</span>
+                        `}
+                      </div>
+                      ${node.align_status === 'new' && ((nodeEdits[i]?.kind) ?? node.kind) === 'identifier' ? html`
+                        <div className="llm-item__row">
+                          <input
+                            className="llm-edit llm-edit--id"
+                            value=${(nodeEdits[i]?.phone) ?? node.phone ?? ''}
+                            onChange=${(e) => edit(setNodeEdits, i, 'phone', e.target.value)}
+                            placeholder="phone"
+                          />
+                          <input
+                            className="llm-edit llm-edit--id"
+                            value=${(nodeEdits[i]?.email) ?? node.email ?? ''}
+                            onChange=${(e) => edit(setNodeEdits, i, 'email', e.target.value)}
+                            placeholder="email"
+                          />
+                        </div>` : null}
+                      ${node.align_status === 'new' && ['provider', 'account'].includes((nodeEdits[i]?.kind) ?? node.kind) ? html`
+                        <div className="llm-item__row">
+                          <input
+                            className="llm-edit llm-edit--id"
+                            value=${(nodeEdits[i]?.platform) ?? node.platform ?? ''}
+                            onChange=${(e) => edit(setNodeEdits, i, 'platform', e.target.value)}
+                            placeholder="platform"
+                          />
+                        </div>` : null}
+                      <div className="llm-item__note">
+                        ${t('llmConf')} ${pct(node.confidence)} · ${node.reason}
+                        ${node.align_status === 'existing' && node.matched_node_id
+                          ? ` · ${t('llmAlignedTo')} ${node.matched_node_id}` : ''}
+                        ${node.mentions && node.mentions.length > 1 ? ` · 原文：${node.mentions.join(' / ')}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                `)}
+              </div>
+
+              <div className="llm-section-title">${t('llmRelsTitle')}</div>
+              ${result.relationships.length === 0 ? html`<div className="llm-empty">${t('llmNoRel')}</div>` : null}
+              <div className="llm-list">
+                ${result.relationships.map((rel, i) => html`
+                  <div className=${'llm-item' + (relChecks[i] ? ' is-checked' : '')} key=${rel.id + ':' + i}>
+                    <label className="llm-check">
+                      <input
+                        type="checkbox"
+                        checked=${!!relChecks[i]}
+                        onChange=${(e) => setRelChecks((prev) => ({ ...prev, [i]: e.target.checked }))}
+                      />
+                      <span className=${'llm-badge llm-badge--' + (rel.status === 'duplicate' ? 'dup' : 'new')}>
+                        ${rel.status === 'duplicate' ? t('llmDup') : t('llmRelNew')}
+                      </span>
+                    </label>
+                    <div className="llm-item__body">
+                      <div className="llm-item__row">
+                        <select
+                          className="llm-edit llm-edit--select"
+                          value=${(relEdits[i]?.source) ?? rel.source}
+                          onChange=${(e) => edit(setRelEdits, i, 'source', e.target.value)}
+                        >
+                          ${result.nodes.map((n) => html`<option key=${n.id} value=${n.id}>${n.id}</option>`)}
+                        </select>
+                        <span className="llm-item__arrow">→</span>
+                        <select
+                          className="llm-edit llm-edit--select"
+                          value=${(relEdits[i]?.relation_type) ?? rel.relation_type}
+                          onChange=${(e) => edit(setRelEdits, i, 'relation_type', e.target.value)}
+                        >
+                          ${LLM_REL_TYPES.map((tp) => html`<option key=${tp} value=${tp}>${tp}</option>`)}
+                        </select>
+                        <span className="llm-item__arrow">→</span>
+                        <select
+                          className="llm-edit llm-edit--select"
+                          value=${(relEdits[i]?.target) ?? rel.target}
+                          onChange=${(e) => edit(setRelEdits, i, 'target', e.target.value)}
+                        >
+                          ${result.nodes.map((n) => html`<option key=${n.id} value=${n.id}>${n.id}</option>`)}
+                        </select>
+                        <span className="llm-item__meta">${t('llmConf')} ${pct(rel.confidence)}</span>
+                      </div>
+                      ${rel.note ? html`<div className="llm-item__note">${rel.note}</div>` : null}
+                    </div>
+                  </div>
+                `)}
+              </div>
+
+              <div className="modal__actions">
+                <span className="llm-count">${t('llmChecked')} ${checkedCount}</span>
+                <button
+                  className="toolbar__button"
+                  onClick=${confirmApply}
+                  disabled=${applying || checkedCount === 0}
+                >
+                  ${applying ? t('llmApplying') : t('llmApply')}
+                </button>
+              </div>
+            </div>` : null}
+        </div>
+      </div>
+    `;
+  }
+
   function App() {
     const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
@@ -2451,6 +2803,7 @@
     const [selectedRelationship, setSelectedRelationship] = useState(null);
     const [neighbors, setNeighbors] = useState(null);
     const [importOpen, setImportOpen] = useState(false);
+    const [llmImportOpen, setLlmImportOpen] = useState(false);
     const [addNodeOpen, setAddNodeOpen] = useState(false);
     const [addRelOpen, setAddRelOpen] = useState(false);
     const [addRelSource, setAddRelSource] = useState(null);
@@ -2810,6 +3163,7 @@
           onAddNode=${() => setAddNodeOpen(true)}
           onAddRelationship=${() => { setAddRelSource(null); setAddRelTarget(null); setAddRelOpen(true); }}
           onImport=${() => setImportOpen(true)}
+          onLlmImport=${() => setLlmImportOpen(true)}
           onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
           onToggleDetails=${() => setIsDetailsOpen((open) => !open)}
           isSidebarOpen=${isSidebarOpen}
@@ -2883,6 +3237,14 @@
           onClose=${() => setImportOpen(false)}
           onImportJson=${handleImportJson}
           onImportCsv=${handleImportCsv}
+          locale=${locale}
+          t=${t}
+        />
+
+        <${LlmImportDialog}
+          open=${llmImportOpen}
+          onClose=${() => setLlmImportOpen(false)}
+          onApplied=${async () => { await loadGraph(); }}
           locale=${locale}
           t=${t}
         />

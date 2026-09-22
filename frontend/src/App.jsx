@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { GraphCanvas } from './components/GraphCanvas/GraphCanvas';
 import { DetailPanel } from './components/DetailPanel/DetailPanel';
 import { ImportDialog } from './components/ImportDialog/ImportDialog';
+import { LlmImportDialog } from './components/LlmImportDialog/LlmImportDialog';
 
 const visibleKinds = ['you', 'provider', 'platform', 'account', 'identifier', 'tag'];
 
@@ -24,6 +25,7 @@ export default function App() {
   const [selectedRelationship, setSelectedRelationship] = useState(null);
   const [neighbors, setNeighbors] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [llmImportOpen, setLlmImportOpen] = useState(false);
   const [stats, setStats] = useState({ nodes: sampleGraph.nodes.length, relationships: sampleGraph.relationships.length });
 
   useEffect(() => {
@@ -178,6 +180,7 @@ export default function App() {
         onAddNode={handleAddNode}
         onAddRelationship={handleAddRelationship}
         onImport={() => setImportOpen(true)}
+        onLlmImport={() => setLlmImportOpen(true)}
       />
 
       <div className="content">
@@ -207,6 +210,12 @@ export default function App() {
         onClose={() => setImportOpen(false)}
         onImportJson={handleImportJson}
         onImportCsv={handleImportCsv}
+      />
+
+      <LlmImportDialog
+        open={llmImportOpen}
+        onClose={() => setLlmImportOpen(false)}
+        onApplied={async () => { await loadGraph(); }}
       />
     </div>
   );
