@@ -2024,7 +2024,7 @@
       const INTRO_MAX_DELAY = 240; // 最外圈相对扩散起点的最大延迟
       const INTRO_START_DELAY = 580; // 对齐遮罩刚消失的时刻再开始, 保证 YOU 坠落全程可见
       const INTRO_TOTAL = RIPPLE_HOLD + INTRO_MAX_DELAY + INTRO_MS;
-      let introStartTs = -1; // -1 = 尚未开始, 按已完成状态绘制
+      let introStartTs = null; // null = pending (等待 startIntro 触发, 此时节点全隐); <0 = 完成; >=0 = 动画中
       let introRaf = 0;
       let introMaxDist = 560;
       const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -2036,11 +2036,14 @@
         const c3 = c1 + 1;
         return 1 + c3 * Math.pow(v - 1, 3) + c1 * Math.pow(v - 1, 2);
       };
-      const introElapsed = () => (introStartTs < 0
-        ? INTRO_TOTAL
-        : (typeof performance !== 'undefined' ? performance.now() : Date.now()) - introStartTs);
+      const introElapsed = () => {
+        if (introStartTs === null) return -Infinity; // pending → 节点全隐
+        if (introStartTs < 0) return INTRO_TOTAL;    // 完成 → 节点全显
+        return (typeof performance !== 'undefined' ? performance.now() : Date.now()) - introStartTs;
+      };
       const nodeIntro = (node) => {
         const elapsed = introElapsed();
+        if (elapsed === -Infinity) return { scale: 0, alpha: 0, dropY: 0 }; // pending
         if (elapsed >= INTRO_TOTAL) return { scale: 1, alpha: 1, dropY: 0 };
         // 中心 YOU: 从上方坠落 + 落地回弹("咚")
         if (rootNode && node.id === rootNode.id) {
@@ -2068,8 +2071,11 @@
           });
         }
         introMaxDist = md;
-        // 时间轴后移: 遮罩淡出前期节点保持全隐, 将尽时(约360ms)才开始由内向外弹出
-        introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + INTRO_START_DELAY;
+        // 判断是首次 boot 还是 remount (从列表切回图谱):
+        // 首次 boot 对齐遮罩淡出用长延迟; remount 无遮罩, simulation 需短暂 settle 即可
+        const isRemount = positionCacheRef.current.size > 0;
+        const startDelay = isRemount ? 40 : INTRO_START_DELAY;
+        introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + startDelay;
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
           if (renderFnRef.current) renderFnRef.current();
@@ -2205,7 +2211,7 @@
           }
 
           // YOU "咚"落地瞬间的冲击波光环
-          if (rootNode && node.id === rootNode.id && introStartTs >= 0) {
+          if (rootNode && node.id === rootNode.id && introStartTs !== null && introStartTs >= 0) {
             const slam = clamp01((introElapsed() - YOU_DROP_MS) / 230);
             if (slam > 0 && slam < 1) {
               ctx.beginPath();
@@ -3136,7 +3142,14 @@
             setNeighbors(null);
           }}
           viewMode=${viewMode}
-          onToggleView=${() => setViewMode((mode) => (mode === 'graph' ? 'list' : 'graph'))}
+          onToggleView=${() => {
+            setViewMode((mode) => {
+              const next = mode === 'graph' ? 'list' : 'graph';
+              // 切回图谱视图时触发入场动画
+              if (next === 'graph') setEnterNonce(Date.now());
+              return next;
+            });
+          }}
           locale=${locale}
           t=${t}
           onToggleLanguage=${() => setLocale((current) => (current === 'zh' ? 'en' : 'zh'))}
