@@ -1833,6 +1833,7 @@
     const focusNodeId = props.focusNodeId;
     const focusNonce = props.focusNonce;
     const enterNonce = props.enterNonce;
+    const introDelayMs = props.introDelayMs;
     const highlightIds = props.highlightIds;
     const onSelectNode = props.onSelectNode;
     const onSelectRelationship = props.onSelectRelationship;
@@ -1848,6 +1849,8 @@
     const renderFnRef = useRef(null);
     const focusFnRef = useRef(null);
     const enterFnRef = useRef(null);
+    const introDelayRef = useRef(40);
+    useEffect(() => { introDelayRef.current = introDelayMs == null ? 40 : introDelayMs; });
     const effectIdRef = useRef(0);
 
     const processed = useMemo(() => {
@@ -2071,12 +2074,10 @@
           });
         }
         introMaxDist = md;
-        // 判断是首次 boot 还是 remount (从列表切回图谱):
-        // 首启: overlay 600ms 淡出, startIntro 在 T+40ms 被调, 延迟 560ms 让 intro
-        //       恰好在遮罩完全消失的瞬间 (T+600) 开始, YOU 坠落全程可见不被遮挡;
-        // remount: 无遮罩, 40ms 短暂 settle 即开始
-        const isRemount = positionCacheRef.current.size > 0;
-        const startDelay = isRemount ? 40 : 560;
+        // 入场延迟由 App 按场景显式指定: 首启 560ms (对齐 boot overlay 600ms 淡出结束的
+        // 瞬间, 避免动画被遮罩挡住), 列表切回图谱 40ms (无遮罩, 立即开始)。
+        // 不能用 positionCache 是否有值来判断场景: 启动时画布在遮罩后面已渲染过, 缓存必然非空。
+        const startDelay = introDelayRef.current;
         introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + startDelay;
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
@@ -2805,6 +2806,7 @@
     const [bootFading, setBootFading] = useState(false);
     const [bootDone, setBootDone] = useState(false);
     const [enterNonce, setEnterNonce] = useState(0);
+    const [introDelayMs, setIntroDelayMs] = useState(560); // 首启对齐 overlay 600ms 淡出; 切换视图时改 40
     const loadRetryRef = useRef(null);
     const bootStartedRef = useRef(false);
     const bootTimersRef = useRef([]);
@@ -3146,12 +3148,13 @@
           }}
           viewMode=${viewMode}
           onToggleView=${() => {
-            setViewMode((mode) => {
-              const next = mode === 'graph' ? 'list' : 'graph';
-              // 切回图谱视图时触发入场动画
-              if (next === 'graph') setEnterNonce(Date.now());
-              return next;
-            });
+            const next = viewMode === 'graph' ? 'list' : 'graph';
+            setViewMode(next);
+            // 切回图谱视图时触发入场动画 (无遮罩, 40ms 立即开始)
+            if (next === 'graph') {
+              setIntroDelayMs(40);
+              setEnterNonce(Date.now());
+            }
           }}
           locale=${locale}
           t=${t}
@@ -3190,6 +3193,7 @@
                     focusNodeId=${focusReq.id}
                     focusNonce=${focusReq.nonce}
                     enterNonce=${enterNonce}
+                    introDelayMs=${introDelayMs}
                     highlightIds=${graphHighlightIds}
                     onSelectNode=${handleSelectNode}
                     onSelectRelationship=${handleSelectRelationship}
