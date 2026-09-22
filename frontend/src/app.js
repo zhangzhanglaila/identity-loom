@@ -917,9 +917,7 @@
     const onImport = props.onImport;
     const onLlmImport = props.onLlmImport;
     const onToggleSidebar = props.onToggleSidebar;
-    const onToggleDetails = props.onToggleDetails;
     const isSidebarOpen = props.isSidebarOpen;
-    const isDetailsOpen = props.isDetailsOpen;
     const searchMessage = props.searchMessage;
 
     return html`
@@ -942,12 +940,6 @@
           title=${t('filters')}
           aria-label=${t('filters')}
         >☰</button>
-        <button
-          className=${'toolbar__button toolbar__button--icon ' + (isDetailsOpen ? 'is-active' : '')}
-          onClick=${onToggleDetails}
-          title=${t('showDetails')}
-          aria-label=${t('showDetails')}
-        >i</button>
         <button className="toolbar__button" onClick=${onAddNode}>${t('addNode')}</button>
         <button className="toolbar__button" onClick=${onAddRelationship}>${t('addEdge')}</button>
         <button className="toolbar__button" onClick=${onImport}>${t('import')}</button>
@@ -2784,7 +2776,6 @@
     const [displayMode, setDisplayMode] = useState('full');
     const [viewMode, setViewMode] = useState('graph');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [filters, setFilters] = useState({ kinds: visibleKinds, depth: 1 });
     const [graph, setGraph] = useState({ nodes: [], relationships: [] });
     const [selectedNode, setSelectedNode] = useState(null);
@@ -3154,9 +3145,7 @@
           onImport=${() => setImportOpen(true)}
           onLlmImport=${() => setLlmImportOpen(true)}
           onToggleSidebar=${() => setIsSidebarOpen((open) => !open)}
-          onToggleDetails=${() => setIsDetailsOpen((open) => !open)}
           isSidebarOpen=${isSidebarOpen}
-          isDetailsOpen=${isDetailsOpen}
           searchMessage=${searchMessage}
         />
 
