@@ -2108,6 +2108,10 @@
       };
 
       const render = () => {
+        // 每次 render 都读 live 尺寸: 闭包里的 width/height 是初始化时的, ResizeObserver 更新了 canvas.backing store
+        // 却没同步更新这两个闭包变量, 容器变大后 clearRect 只清旧区域, 新暴露的底部永远没清 → 节点像素堆积成残影
+        const w = canvas.clientWidth || width;
+        const h = canvas.clientHeight || height;
         const _rs = selectionStateRef.current;
         const selectedNodeId = _rs.selectedNodeId;
         const highlightIds = _rs.highlightIds;
@@ -2127,9 +2131,10 @@
             || (toYou && defaultCoreIds.has(idOf(d.source)));
         };
         ctx.save();
-        ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = 'rgba(5, 11, 20, 0.68)';
-        ctx.fillRect(0, 0, width, height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#050b14';
+        ctx.fillRect(0, 0, w, h);
 
         ctx.translate(transform.x, transform.y);
         ctx.scale(transform.k, transform.k);
