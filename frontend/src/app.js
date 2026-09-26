@@ -1851,6 +1851,10 @@
     const enterFnRef = useRef(null);
     const introDelayRef = useRef(40);
     useEffect(() => { introDelayRef.current = introDelayMs == null ? 40 : introDelayMs; });
+    // 本次挂载内首次 startIntro 是否已触发: true=首挂仍等待入场(节点全隐);
+    // false=入场已开始或本组件之前已播过 -> setup effect 重跑(如搜索追加节点导致
+    // processed 变化)时直接全显, 避免 introStartTs 重置为 null 后永不触发、节点永久消失
+    const introArmedRef = useRef(true);
     const effectIdRef = useRef(0);
 
     const processed = useMemo(() => {
@@ -2027,7 +2031,7 @@
       const INTRO_MAX_DELAY = 240; // 最外圈相对扩散起点的最大延迟
       const INTRO_START_DELAY = 580; // 对齐遮罩刚消失的时刻再开始, 保证 YOU 坠落全程可见
       const INTRO_TOTAL = RIPPLE_HOLD + INTRO_MAX_DELAY + INTRO_MS;
-      let introStartTs = null; // null = pending (等待 startIntro 触发, 此时节点全隐); <0 = 完成; >=0 = 动画中
+      let introStartTs = introArmedRef.current ? null : -1; // 首挂 pending (节点全隐, 等 startIntro); 重跑且已播过则全显
       let introRaf = 0;
       let introMaxDist = 560;
       const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -2078,6 +2082,7 @@
         // 瞬间, 避免动画被遮罩挡住), 列表切回图谱 40ms (无遮罩, 立即开始)。
         // 不能用 positionCache 是否有值来判断场景: 启动时画布在遮罩后面已渲染过, 缓存必然非空。
         const startDelay = introDelayRef.current;
+        introArmedRef.current = false; // 入场已开始: 之后 setup 重跑直接全显, 不再 pending
         introStartTs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + startDelay;
         if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(introRaf);
         const loop = () => {
