@@ -9,6 +9,8 @@
     zh: {
       appName: '身份图谱',
       searchPlaceholder: '搜索节点',
+      searchNext: '下一个匹配 (Enter)',
+      searchPrev: '上一个匹配 (Shift+Enter)',
       search: '搜索',
       spider: '蜘蛛网',
       layered: '分层',
@@ -118,6 +120,8 @@
     en: {
       appName: 'Identity Web',
       searchPlaceholder: 'Search nodes',
+      searchNext: 'Next match (Enter)',
+      searchPrev: 'Previous match (Shift+Enter)',
       search: 'Search',
       spider: 'Spider',
       layered: 'Layered',
@@ -919,6 +923,8 @@
     const onToggleSidebar = props.onToggleSidebar;
     const isSidebarOpen = props.isSidebarOpen;
     const searchMessage = props.searchMessage;
+    const searchTotal = props.searchTotal || 0;
+    const searchIndex = props.searchIndex;
 
     return html`
       <div className="toolbar">
@@ -927,11 +933,22 @@
           className="toolbar__search"
           value=${q}
           onInput=${(e) => onQueryChange(e.target.value)}
-          onKeyDown=${(e) => e.key === 'Enter' && onSearch()}
+          onKeyDown=${(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); onSearch(e.shiftKey ? -1 : 1); }
+          }}
           placeholder=${t('searchPlaceholder')}
+          title=${t('searchNext') + ' / ' + t('searchPrev')}
         />
         ${searchMessage ? html`<span className="toolbar__search-message">${searchMessage}</span>` : null}
-        <button className="toolbar__button" onClick=${onSearch}>${t('search')}</button>
+        ${searchTotal > 0 ? html`
+          <div className="toolbar__search-nav">
+            <button type="button" className="toolbar__search-step" title=${t('searchPrev')}
+              onClick=${() => onSearch(-1)}>‹</button>
+            <span className="toolbar__search-count">${searchIndex + 1}/${searchTotal}</span>
+            <button type="button" className="toolbar__search-step" title=${t('searchNext')}
+              onClick=${() => onSearch(1)}>›</button>
+          </div>` : null}
+        <button className="toolbar__button" onClick=${() => onSearch(1)}>${t('search')}</button>
         <button className="toolbar__button" onClick=${onToggleLayout}>${layoutMode === 'spider' ? t('spider') : t('layered')}</button>
         <button className="toolbar__button" onClick=${onToggleView}>${viewMode === 'graph' ? t('graphView') : t('listView')}</button>
         <button
@@ -2786,6 +2803,9 @@
   function App() {
     const [locale, setLocale] = useState('zh');
     const [query, setQuery] = useState('');
+    // 搜索结果循环导航: { term, matches, index } 放 ref 避免 Enter 连按闭包过期; searchNav 驱动 UI 计数
+    const searchNavRef = useRef({ term: '', matches: [], index: -1 });
+    const [searchNav, setSearchNav] = useState({ total: 0, index: -1 });
     const [layoutMode, setLayoutMode] = useState('spider');
     const [displayMode, setDisplayMode] = useState('full');
     const [viewMode, setViewMode] = useState('graph');
@@ -2928,38 +2948,63 @@
         ? t('searchFailed')
         : null;
 
-    const handleSearch = async () => {
+    // direction: 1 = 下一个 (Enter), -1 = 上一个 (Shift+Enter); 同一关键词连按在结果内循环
+    const handleSearch = async (direction = 1) => {
       const term = query.trim();
       if (!term) {
         setSearchState('idle');
+        setSearchNav({ total: 0, index: -1 });
         return;
       }
       clearLoadRetry();
-      try {
-        const results = await searchNodes(term);
-        if (!Array.isArray(results) || results.length === 0) {
-          setSearchState('empty');
+      const nav = searchNavRef.current;
+      let matches;
+      let idx;
+      if (nav.term === term && nav.matches.length > 0) {
+        // 同一关键词: 纯本地循环, 不再请求
+        matches = nav.matches;
+        idx = (nav.index + direction + matches.length) % matches.length;
+      } else {
+        try {
+          const results = await searchNodes(term);
+          if (!Array.isArray(results) || results.length === 0) {
+            searchNavRef.current = { term, matches: [], index: -1 };
+            setSearchNav({ total: 0, index: -1 });
+            setSearchState('empty');
+            return;
+          }
+          matches = results;
+          idx = direction >= 0 ? 0 : matches.length - 1;
+        } catch {
+          setSearchState('error');
           return;
         }
-        setSearchState('ready');
-        setDisplayMode('full');
-        const merged = dedupeById([...graph.nodes, ...results]);
-        setGraph({ nodes: merged, relationships: graph.relationships });
-        if (results[0]) {
-          setSelectedNode(results[0]);
-          setSelectedRelationship(null);
-          setNeighbors(null);
-          setIsDetailsOpen(true);
-          setFocusReq({ id: results[0].id, nonce: Date.now() });
-          try {
-            const data = await getNeighbors(results[0].id, 1);
-            setNeighbors(data);
-          } catch {
-            setNeighbors(null);
-          }
-        }
+      }
+      searchNavRef.current = { term, matches, index: idx };
+      setSearchNav({ total: matches.length, index: idx });
+      setSearchState('ready');
+      setDisplayMode('full');
+      // 整批结果并入图谱, 循环切换时目标节点都已存在
+      setGraph((prev) => ({ nodes: dedupeById([...prev.nodes, ...matches]), relationships: prev.relationships }));
+      const node = matches[idx];
+      setSelectedNode(node);
+      setSelectedRelationship(null);
+      setIsDetailsOpen(true);
+      setFocusReq({ id: node.id, nonce: Date.now() });
+      const reqId = ++neighborReqRef.current;
+      try {
+        const data = await getNeighbors(node.id, 1);
+        if (reqId === neighborReqRef.current) setNeighbors(data);
       } catch {
-        setSearchState('error');
+        if (reqId === neighborReqRef.current) setNeighbors(null);
+      }
+    };
+
+    const handleQueryChange = (value) => {
+      setQuery(value);
+      // 关键词变了就清掉旧的 N/M 计数
+      if (value.trim() !== searchNavRef.current.term) {
+        setSearchNav({ total: 0, index: -1 });
       }
     };
 
@@ -3139,8 +3184,10 @@
       <div className="app-shell">
         <${Toolbar}
           query=${query}
-          onQueryChange=${setQuery}
+          onQueryChange=${handleQueryChange}
           onSearch=${handleSearch}
+          searchTotal=${searchNav.total}
+          searchIndex=${searchNav.index}
           onToggleLayout=${() => setLayoutMode((mode) => (mode === 'spider' ? 'layered' : 'spider'))}
           layoutMode=${layoutMode}
           displayMode=${displayMode}
